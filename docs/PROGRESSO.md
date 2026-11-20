@@ -26,7 +26,7 @@
 
 ## 19/11/2026 — Etapa 02/12 — Interface e identidade visual
 
-- **Status:** implementação pronta para revisão.
+- **Status:** integrada a `develop` pelo [PR #5](https://github.com/Samuelnata2109/foto-autom-tica/pull/5), merge `5495a62`.
 - **Entregas:** recepção, cabine, guia lateral de gestos, seleção visual de 5 e 10 segundos,
   controle de tela cheia e prévias de contagem, revisão e compartilhamento.
 - **Arquivos:** `src/App.tsx`, `src/main.tsx`, `src/pages/`, `src/components/`, `src/hooks/`,
@@ -47,5 +47,31 @@
 - **Limitações e pendências:** validação presencial em monitor de evento, incluindo tela cheia,
   e revisão humana. A seleção de duração é visual. Recursos fotográficos seguem no roadmap.
 - **Branch:** `feature/02-ui-design`.
-- **Commit e PR:** referências no relatório de conclusão. Revisão pendente.
+- **Commit de implementação:** `bda8d36`.
 - **Próxima etapa:** 03 — Integração da câmera, após revisão e autorização.
+
+## 20/11/2026 — Etapa 03/12 — Integração da câmera
+
+- **Status:** implementação pronta para revisão.
+- **Entregas:** vídeo ao vivo, seleção e atualização de dispositivos, espelhamento
+  da prévia, resolução e FPS informados pelo navegador, estados de erro, desconexão,
+  tentativa manual e liberação de recursos.
+- **Arquivos:** `src/hooks/useCamera.ts`, `src/services/camera.ts`, componentes de
+  câmera, `BoothPage.tsx`, `src/styles.css`, `tests/BoothFlow.test.tsx`, README e
+  documentação, incluindo [CONFIGURACAO_CAMERA.md](CONFIGURACAO_CAMERA.md).
+- **Decisão:** MediaDevices para webcams físicas e DroidCam virtual. USB e Wi-Fi
+  são configurados no cliente DroidCam. A cabine solicita somente vídeo.
+- **Dependências:** APIs nativas do navegador e ferramentas já instaladas.
+- **Validação automatizada:** lint, typecheck, build, format:check e 15 testes passaram.
+  Os testes de câmera usam mocks de MediaDevices e cobrem permissões, seleção,
+  desconexão, encerramento, espelhamento e estados da interface.
+- **Ajuste de validação:** o limite de tempo do Vitest passou a 15 s para acomodar
+  a montagem e navegação de telas no jsdom em ambientes mais lentos.
+- **Limitações:** se o driver mantiver a faixa ativa após perder o sinal, confirme
+  o vídeo no cliente DroidCam e reinicie a câmera na cabine.
+- **Validação física pendente:** DroidCam via Wi-Fi e USB e webcam convencional.
+  O desenvolvedor informou que o DroidCam funciona por Wi-Fi e que o USB falhou
+  no equipamento utilizado.
+- **Branch:** `feature/03-camera-integration`.
+- **Commit e PR:** referências no relatório de conclusão. Revisão pendente.
+- **Próxima etapa:** 04 — Sistema fotográfico, após revisão e autorização.

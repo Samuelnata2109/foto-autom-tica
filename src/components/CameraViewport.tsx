@@ -1,12 +1,12 @@
-import { ScanLine, VideoOff } from 'lucide-react';
+import { ScanLine } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { EmptyState } from './EmptyState';
+import { cameraMessages, type CameraState } from '../services/camera';
 
-export function CameraStatus({ available = false }: { available?: boolean }) {
+export function CameraStatus({ status }: { status: CameraState }) {
   return (
-    <span className="camera-status" data-available={available}>
+    <span className="camera-status" data-available={status === 'active'} role="status">
       <span aria-hidden="true" />
-      {available ? 'Câmera disponível' : 'Câmera indisponível'}
+      {cameraMessages[status][0]}
     </span>
   );
 }
@@ -29,17 +29,7 @@ export function CameraViewport({ video, overlay }: { video?: ReactNode; overlay?
       <div className="camera-viewport__label">
         <ScanLine size={17} aria-hidden="true" /> Visor da câmera
       </div>
-      {video ? (
-        <div className="camera-viewport__media">{video}</div>
-      ) : (
-        !overlay && (
-          <EmptyState
-            icon={VideoOff}
-            title="A câmera ainda não está disponível"
-            description="A prévia ao vivo será integrada na Etapa 03."
-          />
-        )
-      )}
+      {video && <div className="camera-viewport__media">{video}</div>}
       {overlay}
     </section>
   );

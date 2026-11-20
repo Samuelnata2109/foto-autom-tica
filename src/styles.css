@@ -686,3 +686,59 @@
     transform: none;
   }
 }
+
+.camera-viewport__media video[data-mirrored='true'] {
+  transform: scaleX(-1);
+}
+
+.camera-feedback {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  z-index: 1;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--viewfinder);
+}
+
+.camera-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--color-booth-muted);
+  font-size: 0.875rem;
+}
+
+.camera-controls select {
+  min-height: 2.75rem;
+  min-width: 0;
+  max-width: min(100%, 18rem);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--color-booth-surface);
+  color: var(--color-booth-text);
+}
+
+.camera-controls__mirror {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  gap: var(--space-1);
+  cursor: pointer;
+}
+
+.camera-controls__mirror input {
+  accent-color: var(--color-booth-accent);
+}
+
+.camera-controls__quality {
+  margin-inline-start: auto;
+}
+
+@media (min-width: 56.0625rem) {
+  .booth-stage--camera .camera-viewport {
+    min-height: clamp(20rem, calc(100dvh - 20rem), 72rem);
+  }
+}

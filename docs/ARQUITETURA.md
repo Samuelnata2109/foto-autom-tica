@@ -29,12 +29,14 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
 
 ## Fluxo previsto da cabine
 
-1. **Vídeo ao vivo.** Na Etapa 03, o navegador do celular poderá solicitar a câmera com
-   `getUserMedia` (somente vídeo) e transmitir as faixas para a cabine via WebRTC. Planeja-se
-   pareamento de curta duração e sinalização autenticada para SDP e ICE. Validar HTTPS, troca de
-   câmera, codecs e desempenho em Wi-Fi local; avaliar STUN/TURN quando a conexão direta falhar.
-   Manter uma câmera ligada ao computador como alternativa. Exibir estados claros para
-   permissão negada, desconexão e reconexão. Encerrar faixas e conexão ao trocar a fonte ou sair.
+1. **Vídeo ao vivo.** Na Etapa 03, o cliente DroidCam recebe o vídeo do celular via USB
+   ou Wi-Fi e o expõe ao Windows como webcam virtual. A cabine enumera as câmeras
+   com `enumerateDevices` e abre a escolhida com `getUserMedia`, somente vídeo.
+   `useCamera` mantém as referências tipadas de vídeo e stream, controla o ciclo de
+   vida das faixas e acompanha mudanças na lista de dispositivos. O visor mostra o vídeo
+   com espelhamento opcional em CSS. As configurações pedidas são ideais, e a interface
+   mostra apenas as dimensões e FPS fornecidos pelo navegador. A aplicação não usa
+   WebRTC nem comunica diretamente com o celular.
 2. **Temporizador e captura.** Na Etapa 04, controles manuais iniciarão uma contagem de 5 ou 10
    segundos. O fluxo compartilhado passa por prévia, contagem, captura e revisão, com cancelamento
    ou reinício se a fonte ficar indisponível. Usar um prazo monotônico para a contagem, bloquear

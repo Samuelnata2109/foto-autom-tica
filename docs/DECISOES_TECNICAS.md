@@ -24,13 +24,17 @@ MediaPipe Tasks Vision, o cliente Supabase e a biblioteca QRCode ficam para suas
 
 ## DT-03 — Vídeo e processamento no dispositivo
 
-**Status:** proposta a validar nas Etapas 03 a 07.
+**Status:** entrada de vídeo adotada na Etapa 03. Canvas e MediaPipe ficam para as etapas previstas.
 
-Usar MediaDevices para a câmera, WebRTC para o vídeo remoto, Canvas para captura e
-composição e MediaPipe para inferência local. Essa divisão mantém os frames no fluxo de
-vídeo e reduz a dependência de serviços externos. O protótipo de câmera deve avaliar
-sinalização, relay e recuperação antes de definir a topologia final. A necessidade de
-Worker será medida em hardware de referência.
+Usar MediaDevices para webcams locais, incluindo a webcam virtual do DroidCam.
+O transporte USB foi a primeira opção para aproveitar o cabo e dispensar sinalização
+WebRTC. Wi-Fi pelo cliente DroidCam usa a mesma interface de câmera no computador.
+A escolha do transporte fica no DroidCam. Foi relatado que o USB não funcionou no
+equipamento utilizado, enquanto o DroidCam funcionou por Wi-Fi.
+
+Canvas permanece previsto para captura e composição, e MediaPipe para inferência local.
+O stream permanece original para ambos. O espelhamento é aplicado somente ao elemento
+de vídeo.
 
 ## DT-04 — Persistência e integrações com acesso restrito
 

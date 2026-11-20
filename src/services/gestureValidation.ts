@@ -18,9 +18,12 @@ export function recognizedGesture(
   detection: GestureDetection,
   minimumConfidence = gestureConfig.minimumConfidence,
 ): GestureName | null {
-  if (!detection || !Number.isFinite(detection.score) || detection.score < minimumConfidence)
-    return null;
-  return detection.name in gestureLabels ? (detection.name as GestureName) : null;
+  const threshold =
+    detection?.geometry && detection.geometry === detection.name
+      ? gestureConfig.supportedConfidence
+      : minimumConfidence;
+  if (!detection || !Number.isFinite(detection.score) || detection.score < threshold) return null;
+  return Object.hasOwn(gestureLabels, detection.name) ? (detection.name as GestureName) : null;
 }
 
 export function commandFor(phase: GesturePhase, gesture: GestureName): GestureCommand | null {
@@ -44,27 +47,36 @@ export class GestureValidation {
     if (!keepLatch) this.latch = null;
   }
 
-  update(detection: GestureDetection, phase: GesturePhase, now: number, samplePeriodMs = 100) {
+  update(
+    detection: GestureDetection,
+    phase: GesturePhase,
+    now: number,
+    samplePeriodMs = 100,
+    smooth = false,
+  ) {
     if (phase !== this.phase) {
       this.phase = phase;
       this.reset(true);
     }
     const gesture = recognizedGesture(detection);
+    const gap = now - this.lastSeenAt;
+    const tolerance = gestureConfig.detectionGraceMs + (smooth ? samplePeriodMs : 0);
+    const interrupted =
+      gap >
+      samplePeriodMs + gestureConfig.sampleJitterMs + (smooth && this.missing ? samplePeriodMs : 0);
     if (!gesture) {
-      if ((this.candidate || this.latch) && now - this.lastSeenAt > gestureConfig.detectionGraceMs)
-        this.reset();
+      if ((this.candidate || this.latch) && gap > tolerance) this.reset();
       else this.missing = true;
       return {
+        reason: this.candidate ? 'Amostra incerta; tempo pausado' : 'Sem detecção estável',
         gesture: this.candidate,
         progress: this.candidate ? Math.min(1, this.heldMs / gestureConfig.confirmationMs) : 0,
         command: null,
       };
     }
     if (this.latch && gesture !== this.latch) this.latch = null;
-    if (
-      this.candidate !== gesture ||
-      now - this.lastSeenAt > samplePeriodMs + gestureConfig.sampleJitterMs
-    ) {
+    const changed = this.candidate !== gesture;
+    if (changed || interrupted) {
       this.candidate = gesture;
       this.heldMs = 0;
     } else {
@@ -86,6 +98,19 @@ export class GestureValidation {
       this.latch = gesture;
       this.reset(true);
     }
-    return { gesture, progress, command };
+    const reason = command
+      ? 'Comando autorizado'
+      : !allowed
+        ? 'Gesto bloqueado nesta fase'
+        : this.latch === gesture
+          ? 'Aguardando liberação'
+          : changed
+            ? 'Novo gesto'
+            : interrupted
+              ? 'Intervalo prolongado'
+              : progress < 1
+                ? 'Confirmando estabilidade'
+                : 'Intervalo de segurança';
+    return { gesture, progress, command, reason };
   }
 }

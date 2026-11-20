@@ -834,3 +834,20 @@
 .capture-error {
   color: var(--color-booth-accent);
 }
+
+.gesture-landmarks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--color-booth-accent);
+  pointer-events: none;
+}
+.gesture-diagnostics {
+  padding: var(--space-2);
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+.gesture-diagnostics label {
+  display: block;
+}

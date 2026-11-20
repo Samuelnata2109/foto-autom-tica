@@ -125,3 +125,11 @@
 - **Validação:** resultados registrados no relatório desta revisão. Testes usam inferência simulada; validação física de precisão e fluidez continua pendente.
 - **Continuidade:** Etapa 06 depende de autorização.
 - **Resultados da revisão:** lint, typecheck, format:check e 43 testes passaram (35 preservados, 8 novos). Build de produção verificado antes do commit. Testes manuais de reconhecimento real continuam pendentes.
+
+## 20/11/2026 — Refinamento de precisão da Etapa 05, em calibração
+
+A validação física relatou comandos de paz e punho incompletos, confusão entre palma e paz, dificuldade com polegar e fallback ativo. A etapa segue pendente de validação física. A falha de inicialização do worker foi reproduzida em Chrome com o SDK e o modelo reais. As medições e o roteiro estão em [Reconhecimento de gestos](RECONHECIMENTO_GESTOS.md).
+
+O ajuste inclui carregador WASM modular, geometria 3D complementar, votação temporal e painel de diagnóstico com observação sem comandos. Foram alterados o hook, worker, configuração, tipos, serviços, página da cabine, estilos e configuração Vite. Os testes de precisão e de integração exercitam o classificador e o envio de comandos. Nenhuma dependência adicionada. Branch `feature/05-gesture-recognition`, [PR #9](https://github.com/Samuelnata2109/foto-autom-tica/pull/9) em revisão. A precisão e a fluidez com participantes continuam pendentes.
+
+Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build servido sob /booth/ retornou Thumb_Up, confiança 0,741, geometria concordante e 21 pontos na imagem pública. O ensaio direto em Chrome headless demorou 38,2 s até ready e 2,0 s para a resposta seguinte. Com essa latência, a cabine acionaria o fallback pelo timeout de inicialização de 15 s. Medir o tempo no navegador e hardware do evento.

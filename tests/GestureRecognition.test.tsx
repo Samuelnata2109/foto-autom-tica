@@ -52,6 +52,14 @@ function Harness({
     <>
       <video ref={videoRef} />
       <button onClick={() => recognition.setEnabled(!recognition.enabled)}>Alternar IA</button>
+      <button
+        onClick={() => {
+          recognition.setDebug(true);
+          recognition.setObserve(true);
+        }}
+      >
+        Observar
+      </button>
       <span>{recognition.status}</span>
     </>
   );
@@ -246,4 +254,22 @@ it('fecha bitmap pendente da sessão anterior após desativar e reativar', async
   expect(frame.close).toHaveBeenCalled();
   expect(worker.messages.filter((message) => message.type === 'frame')).toHaveLength(0);
   expect(FakeWorker.instances).toHaveLength(2);
+});
+
+it.each([false, true])('controla o envio do comando conforme observação %s', async (observe) => {
+  const { worker, video } = await readyWorker();
+  if (observe) await act(async () => host.querySelectorAll('button')[1]!.click());
+  for (let i = 0; i <= 22; i++) {
+    video.currentTime += 1;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    const message = worker.messages.at(-1);
+    if (message?.type !== 'frame') throw Error('Quadro esperado');
+    await act(async () =>
+      worker.reply({ type: 'result', id: message.id, detection: { name: 'Victory', score: 0.92 } }),
+    );
+  }
+  if (observe) expect(onCommand).not.toHaveBeenCalled();
+  else expect(onCommand.mock.calls).toEqual([['start10']]);
 });

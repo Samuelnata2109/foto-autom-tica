@@ -5,6 +5,9 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import { captureFrame } from '../src/services/photoCapture';
+import * as composition from '../src/services/photoComposition';
+import * as recognition from '../src/hooks/useGestureRecognition';
+import type { GestureCommand } from '../src/types/gesture';
 
 const jpeg = new Blob(['jpeg'], { type: 'image/jpeg' });
 const createUrl = vi.fn(() => 'blob:foto-da-cabine');
@@ -18,6 +21,7 @@ let stream: MediaStream;
 let connect: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  vi.spyOn(composition, 'composePhoto').mockResolvedValue(null);
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
@@ -150,6 +154,43 @@ describe('Sistema fotográfico', () => {
     await press('header a[href="/"]');
     expect(revokeUrl).toHaveBeenCalledExactlyOnceWith('blob:foto-da-cabine');
     expect(track.stop).toHaveBeenCalledOnce();
+  });
+
+  it('revisa o JPEG composto e confirma pelo comando emitido para Thumb_Up', async () => {
+    const composed = new Blob(['composed'], { type: 'image/jpeg' });
+    vi.spyOn(composition, 'composePhoto').mockResolvedValue({
+      blob: composed,
+      width: 1920,
+      height: 1080,
+    });
+    const useRecognition = recognition.useGestureRecognition;
+    let confirmByGesture: ((command: GestureCommand) => void) | undefined;
+    vi.spyOn(recognition, 'useGestureRecognition').mockImplementation((...args) => {
+      if (args[3] === 'review') confirmByGesture = args[4];
+      return useRecognition(...args);
+    });
+    await open();
+    await press('.shutter');
+    await advance(5000);
+    expect(createUrl).toHaveBeenCalledExactlyOnceWith(composed);
+    expect(get('.photo-review').textContent).toContain('Moldura oficial aplicada');
+    expect(confirmByGesture).toBeDefined();
+    await act(async () => confirmByGesture?.('confirm'));
+    expect(get('.photo-review [role=status]').textContent).toContain('Foto confirmada');
+    await press('.photo-review button:first-child');
+    expect(revokeUrl).toHaveBeenCalledExactlyOnceWith('blob:foto-da-cabine');
+    expect(connect).toHaveBeenCalledOnce();
+  });
+
+  it('mantém a foto original confirmável se a aplicação da moldura falhar', async () => {
+    vi.spyOn(composition, 'composePhoto').mockRejectedValue(new Error('PNG inválido'));
+    await open();
+    await press('.shutter');
+    await advance(5000);
+    expect(createUrl).toHaveBeenCalledExactlyOnceWith(jpeg);
+    expect(get('.photo-review').textContent).toContain('Falha ao aplicar a moldura');
+    await press('.photo-review button:last-child');
+    expect(get('.photo-review [role=status]').textContent).toContain('Foto confirmada');
   });
 
   it('cancela se a câmera desconectar durante a contagem', async () => {

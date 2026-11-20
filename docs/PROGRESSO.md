@@ -144,3 +144,14 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Testes:** 66 testes automatizados passaram (`npm run test -- --maxWorkers=1`), incluindo 11 novos casos. Os 55 cenários anteriores foram mantidos; a expectativa antiga de 2 s para cancelamento foi atualizada para os 800 ms solicitados. Testes usam mocks, sem representar validação física.
 - **Qualidade:** `npm run lint`, `npm run typecheck`, `npm run build` e `npm run format:check` passaram. Diff revisado, sem arquivos de credenciais adicionados.
 - **Limitações/pendências:** hipóteses geométricas verificadas por mocks/poses sintéticas; aprovação física de punho/polegar e confirmação de ausência de regressão em palma/paz pendentes. Roteiro em `RECONHECIMENTO_GESTOS.md`. Aguardar revisão e aprovação; Etapa 06 não iniciada.
+
+## 20/11/2026 — Etapa 06/12 — Composição com a moldura oficial
+
+- **Status:** moldura oficial integrada em `feature/06-photo-frame-editor`, baseada em `develop` após a integração do PR #10. A etapa segue pendente da validação física no equipamento do evento e da revisão do [PR #11](https://github.com/Samuelnata2109/foto-autom-tica/pull/11).
+- **Entrega:** composição automática com Canvas, recorte central 16:9 sem espelhamento e JPEG 0,95. A revisão mantém o original em memória e confirma o resultado exibido por botão ou pelo comando do polegar. Na ausência ou falha da moldura, a revisão avisa e utiliza o original.
+- **Arquivos:** serviço `photoComposition.ts`, hook `usePhotoCapture.ts`, tipo `photo.ts`, componente `PhotoReview.tsx`, testes `PhotoComposition.test.ts` e `PhotoCapture.test.tsx`, instruções em `src/assets/frames/README.md` e [composição fotográfica](COMPOSICAO_FOTOGRAFICA.md).
+- **Dependências:** nenhuma adicionada. A composição fecha bitmaps, libera o Canvas e mantém a URL temporária sob o ciclo de vida da sessão.
+- **Testes automatizados:** 74 testes passaram com `npm run test -- --maxWorkers=1 --pool=threads`. A suíte cobre composição com mocks de Canvas, localização automática da arte, falhas, liberação de recursos e confirmação na cabine. A primeira execução sofreu timeout na inicialização de um worker do Vitest.
+- **Arte oficial:** `src/assets/frames/feira-das-profissoes.png` recebeu uma cópia byte a byte do arquivo fornecido. Confirmados 1920 × 1080, proporção 16:9 e alfa zero em todos os 10.000 pixels da amostra central.
+- **Validação no navegador:** Chrome em modo headless compôs o PNG oficial sobre um JPEG sintético de 1920 × 1080. A leitura do JPEG final confirmou a cor da foto no centro e a arte incorporada na borda.
+- **Pendências:** testar com as câmeras do evento e aprovar a revisão. A Etapa 07 depende de autorização.

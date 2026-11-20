@@ -21,9 +21,13 @@ Abra o endereço indicado pelo Vite (por padrão, `http://localhost:5173`). Sele
 **Iniciar experiência**, autorize a câmera e escolha o dispositivo no seletor.
 Use **Desligar câmera** para encerrar a transmissão ou **Início** para sair.
 Na cabine, Tab alcança o grupo Temporizador e as setas alternam entre 5 e 10 segundos.
+Com a câmera pronta, selecione a duração e pressione **Tirar foto**. A contagem pode
+ser cancelada. Na revisão, **Tirar novamente** descarta a foto e volta à transmissão.
+**Confirmar foto** mantém o JPEG em memória até você sair da cabine ou tirar outra foto.
+O espelhamento da prévia não altera a fotografia.
 
 Em `npm run dev`, **Prévias de desenvolvimento** abre os exemplos de contagem, revisão e
-compartilhamento. Captura e reconhecimento seguem indisponíveis.
+compartilhamento. O reconhecimento de gestos permanece previsto para a Etapa 05.
 As prévias ficam fora do build de produção.
 
 ## Verificações

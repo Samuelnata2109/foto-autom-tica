@@ -37,11 +37,14 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
    com espelhamento opcional em CSS. As configurações pedidas são ideais, e a interface
    mostra apenas as dimensões e FPS fornecidos pelo navegador. A aplicação não usa
    WebRTC nem comunica diretamente com o celular.
-2. **Temporizador e captura.** Na Etapa 04, controles manuais iniciarão uma contagem de 5 ou 10
-   segundos. O fluxo compartilhado passa por prévia, contagem, captura e revisão, com cancelamento
-   ou reinício se a fonte ficar indisponível. Usar um prazo monotônico para a contagem, bloquear
-   disparos concorrentes e produzir um único `Blob` com Canvas na resolução do frame recebido
-   (`videoWidth` e `videoHeight`), independente do tamanho da prévia.
+2. **Temporizador e captura.** `useCountdown` usa um prazo monotônico para as contagens
+   de 5 ou 10 segundos. `usePhotoCapture` coordena disparo, cancelamento, revisão,
+   confirmação e repetição. Apenas uma operação pode usar a fonte por vez. Mudança
+   ou perda da fonte cancela a operação pendente. `photoCapture.ts` valida a faixa e
+   copia somente o quadro do vídeo para o Canvas em `videoWidth × videoHeight`.
+   O JPEG usa qualidade 0,95. A revisão usa uma Object URL para o Blob em memória.
+   Ao repetir ou sair, a URL é revogada. O espelhamento visual do vídeo não faz parte
+   dos pixels do JPEG. A confirmação mantém a foto na sessão sem enviar ou gravar arquivos.
 3. **Gestos.** Na Etapa 05, MediaPipe Tasks Vision analisará amostras do vídeo localmente com
    modelo pré-treinado. Limitar frequência e manter apenas um frame em processamento. Avaliar
    Worker quando a inferência impactar a interface. Confiança configurável, confirmação ao longo

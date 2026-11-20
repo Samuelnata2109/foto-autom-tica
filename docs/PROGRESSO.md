@@ -52,7 +52,7 @@
 
 ## 20/11/2026 — Etapa 03/12 — Integração da câmera
 
-- **Status:** implementação pronta para revisão.
+- **Status:** integrada a `develop` pelo [PR #7](https://github.com/Samuelnata2109/foto-autom-tica/pull/7), merge `17a4b9f`.
 - **Entregas:** vídeo ao vivo, seleção e atualização de dispositivos, espelhamento
   da prévia, resolução e FPS informados pelo navegador, estados de erro, desconexão,
   tentativa manual e liberação de recursos.
@@ -69,9 +69,33 @@
   a montagem e navegação de telas no jsdom em ambientes mais lentos.
 - **Limitações:** se o driver mantiver a faixa ativa após perder o sinal, confirme
   o vídeo no cliente DroidCam e reinicie a câmera na cabine.
-- **Validação física pendente:** DroidCam via Wi-Fi e USB e webcam convencional.
-  O desenvolvedor informou que o DroidCam funciona por Wi-Fi e que o USB falhou
-  no equipamento utilizado.
+- **Validação física relatada pelo desenvolvedor:** webcam integrada e DroidCam
+  via Wi-Fi passaram nos testes de transmissão, alternância de câmera, espelhamento,
+  reconexão e tela cheia. Tela verde, atrasos e travamentos foram resolvidos com
+  ajustes externos no DroidCam. As configurações não foram informadas. O USB
+  não funcionou no equipamento utilizado.
 - **Branch:** `feature/03-camera-integration`.
-- **Commit e PR:** referências no relatório de conclusão. Revisão pendente.
+- **Commit de implementação:** `bbc699b`.
 - **Próxima etapa:** 04 — Sistema fotográfico, após revisão e autorização.
+
+## 20/11/2026 — Etapa 04/12 — Sistema fotográfico
+
+- **Status:** implementação pronta para revisão.
+- **Entregas:** temporizadores de 5 e 10 segundos, cancelamento, captura JPEG, revisão,
+  confirmação em memória, repetição e limpeza de recursos.
+- **Arquivos:** `src/hooks/useCountdown.ts`, `src/hooks/usePhotoCapture.ts`,
+  `src/services/photoCapture.ts`, `src/types/photo.ts`, `src/components/PhotoReview.tsx`,
+  controles e visor da cabine, `src/styles.css`, `tests/PhotoCapture.test.tsx` e documentação.
+- **Decisões:** prazo monotônico, uma operação por vez e Canvas na resolução original.
+  JPEG a 0,95 e Object URL revogada ao repetir ou sair. O espelhamento permanece visual.
+- **Dependências:** nenhuma adicionada.
+- **Validação automatizada:** lint, typecheck, build e format:check passaram.
+  O Vitest aprovou 25 testes, incluindo 10 novos com relógio, vídeo e Canvas simulados.
+  A cobertura inclui cancelamento, disparo único, erros, revisão e limpeza de recursos.
+- **Limitações:** a confirmação vale apenas para a cabine aberta. A foto é
+  descartada ao sair e a personalização aguarda a Etapa 06.
+- **Validação física pendente:** conferir contagem, orientação, nitidez, flash,
+  revisão e cancelamento por desconexão em webcam integrada e DroidCam via Wi-Fi.
+- **Branch:** `feature/04-photo-capture`.
+- **Commit e PR:** referências no relatório de conclusão. Revisão pendente.
+- **Próxima etapa:** 05 — Reconhecimento de gestos com IA, após revisão e autorização.

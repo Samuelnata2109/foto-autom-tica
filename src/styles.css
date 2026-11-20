@@ -742,3 +742,60 @@
     min-height: clamp(20rem, calc(100dvh - 20rem), 72rem);
   }
 }
+
+.booth-photo-area {
+  position: relative;
+}
+
+.booth-grid[hidden] {
+  display: none;
+}
+
+.camera-viewport .countdown {
+  background: var(--viewfinder);
+  background: color-mix(in srgb, var(--viewfinder) 88%, transparent);
+}
+
+.capture-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: var(--radius-large);
+  background: var(--color-booth-text);
+  animation: capture-flash 180ms ease-out both;
+}
+
+@keyframes capture-flash {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capture-flash {
+    display: none;
+  }
+}
+
+.photo-review {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.photo-review h2 {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 700;
+}
+
+.photo-review__details,
+.photo-review #editing-availability {
+  color: var(--color-booth-muted);
+}
+
+.capture-error {
+  color: var(--color-booth-accent);
+}

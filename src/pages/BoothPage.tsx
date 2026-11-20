@@ -1,18 +1,37 @@
 import { Link } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, VideoOff } from 'lucide-react';
 import { BoothHeader } from '../components/BoothHeader';
 import { Button } from '../components/Button';
 import { CameraControls } from '../components/CameraControls';
 import { CameraStatus, CameraViewport } from '../components/CameraViewport';
 import { CaptureControls } from '../components/CaptureControls';
+import { CountdownOverlay } from '../components/CountdownOverlay';
 import { GestureGuide } from '../components/GestureGuide';
 import { EmptyState } from '../components/EmptyState';
+import { PhotoReview } from '../components/PhotoReview';
 import { useCamera } from '../hooks/useCamera';
+import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { cameraMessages } from '../services/camera';
+import type { TimerDuration } from '../types/photo';
 
 export function BoothPage() {
   const camera = useCamera();
   const { status } = camera;
+  const [duration, setDuration] = useState<TimerDuration>(5);
+  const ready = status === 'active' && Boolean(camera.settings.width && camera.settings.height);
+  const capture = usePhotoCapture(camera.videoRef, camera.stream, ready);
+  const { state, countdown, error } = capture;
+  const reviewing = state.phase === 'review' || state.phase === 'confirmed';
+  const busy = state.phase === 'countdown' || state.phase === 'capturing';
+  const shutter = useRef<HTMLButtonElement>(null);
+  const previousPhase = useRef(state.phase);
+  useEffect(() => {
+    if (state.phase === 'idle' && previousPhase.current !== 'idle' && ready) {
+      shutter.current?.focus({ preventScroll: true });
+    }
+    previousPhase.current = state.phase;
+  }, [ready, state.phase]);
   const pending = status === 'permission' || status === 'connecting';
   const [title, description] = cameraMessages[status];
 
@@ -24,50 +43,85 @@ export function BoothPage() {
           <h1 tabIndex={-1}>Cabine fotográfica</h1>
           <CameraStatus status={status} />
         </div>
-        <div className="booth-grid">
-          <div className="booth-stage booth-stage--camera">
-            <CameraViewport
-              video={
-                camera.stream && (
-                  <video
-                    ref={camera.videoRef}
-                    aria-label="Prévia ao vivo da câmera"
-                    data-mirrored={camera.mirrored}
-                    autoPlay
-                    muted
-                    playsInline
-                    onPlaying={camera.onPlaying}
-                    onResize={camera.onResize}
-                    onError={camera.onVideoError}
-                  />
-                )
-              }
-              overlay={
-                status !== 'active' && (
-                  <div className="camera-feedback">
-                    <EmptyState
-                      icon={pending ? LoaderCircle : VideoOff}
-                      title={title}
-                      description={description}
-                    />
-                    {!pending && status !== 'unsupported' && (
-                      <Button
-                        variant="secondary"
-                        onClick={() => void camera.start(camera.selection)}
-                      >
-                        {status === 'idle' ? 'Iniciar câmera' : 'Tentar novamente'}
-                      </Button>
-                    )}
-                  </div>
-                )
-              }
+        <div className="booth-photo-area">
+          {reviewing && 'photo' in state && (
+            <PhotoReview
+              photo={state.photo}
+              confirmed={state.phase === 'confirmed'}
+              onRetake={() => capture.retake()}
+              onConfirm={capture.confirm}
             />
-            <CameraControls camera={camera} />
-            <CaptureControls />
+          )}
+          <div className="booth-grid" hidden={reviewing}>
+            <div className="booth-stage booth-stage--camera">
+              <CameraViewport
+                video={
+                  camera.stream && (
+                    <video
+                      ref={camera.videoRef}
+                      aria-label="Prévia ao vivo da câmera"
+                      data-mirrored={camera.mirrored}
+                      autoPlay
+                      muted
+                      playsInline
+                      onPlaying={camera.onPlaying}
+                      onResize={camera.onResize}
+                      onError={camera.onVideoError}
+                    />
+                  )
+                }
+                overlay={
+                  countdown && status === 'active' ? (
+                    <CountdownOverlay
+                      {...countdown}
+                      guidance="Olhe para a câmera"
+                      cancelled={false}
+                      onCancel={capture.cancel}
+                      focusCancel
+                    />
+                  ) : (
+                    status !== 'active' && (
+                      <div className="camera-feedback">
+                        <EmptyState
+                          icon={pending ? LoaderCircle : VideoOff}
+                          title={title}
+                          description={description}
+                        />
+                        {!pending && status !== 'unsupported' && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => void camera.start(camera.selection)}
+                          >
+                            {status === 'idle' ? 'Iniciar câmera' : 'Tentar novamente'}
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  )
+                }
+              />
+              <CameraControls camera={camera} locked={busy} />
+              <CaptureControls
+                duration={duration}
+                onDurationChange={setDuration}
+                onCapture={() => capture.start(duration)}
+                ready={ready}
+                busy={busy}
+                shutterRef={shutter}
+              />
+              {error && (
+                <p className="capture-error" role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+            <GestureGuide />
           </div>
-          <GestureGuide />
+          {(state.phase === 'capturing' || reviewing) && (
+            <div className="capture-flash" aria-hidden="true" />
+          )}
         </div>
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && !busy && !reviewing && (
           <Link className="preview-link" to="/previa/contagem">
             Prévias de desenvolvimento
           </Link>

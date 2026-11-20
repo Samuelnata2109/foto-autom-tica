@@ -69,6 +69,6 @@ detalhes por versão.
 - **Webcam convencional:** conecte a câmera ao computador e selecione seu nome
   no mesmo seletor. Nenhuma configuração do DroidCam é necessária.
 
-O DroidCam por Wi-Fi funcionou no cenário relatado pelo desenvolvedor. O USB
-não funcionou nesse cenário. A validação desta aplicação com equipamento físico
-permanece pendente.
+O desenvolvedor validou na cabine a webcam integrada e o DroidCam por Wi-Fi.
+Transmissão, troca de câmera, espelhamento, reconexão e tela cheia passaram.
+A conexão USB não funcionou no equipamento relatado.

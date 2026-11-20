@@ -144,3 +144,12 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Testes:** 66 testes automatizados passaram (`npm run test -- --maxWorkers=1`), incluindo 11 novos casos. Os 55 cenários anteriores foram mantidos; a expectativa antiga de 2 s para cancelamento foi atualizada para os 800 ms solicitados. Testes usam mocks, sem representar validação física.
 - **Qualidade:** `npm run lint`, `npm run typecheck`, `npm run build` e `npm run format:check` passaram. Diff revisado, sem arquivos de credenciais adicionados.
 - **Limitações/pendências:** hipóteses geométricas verificadas por mocks/poses sintéticas; aprovação física de punho/polegar e confirmação de ausência de regressão em palma/paz pendentes. Roteiro em `RECONHECIMENTO_GESTOS.md`. Aguardar revisão e aprovação; Etapa 06 não iniciada.
+
+## 20/11/2026 — Etapa 06/12 — Composição com a moldura oficial
+
+- **Status:** infraestrutura implementada em `feature/06-photo-frame-editor`, baseada em `develop` após a integração do PR #10. A etapa segue pendente do PNG oficial e da validação física.
+- **Entrega:** composição automática com Canvas, recorte central 16:9 sem espelhamento e JPEG 0,95. A revisão mantém o original em memória e confirma o resultado exibido por botão ou pelo comando do polegar. Na ausência ou falha da moldura, a revisão avisa e utiliza o original.
+- **Arquivos:** serviço `photoComposition.ts`, hook `usePhotoCapture.ts`, tipo `photo.ts`, componente `PhotoReview.tsx`, testes `PhotoComposition.test.ts` e `PhotoCapture.test.tsx`, instruções em `src/assets/frames/README.md` e [composição fotográfica](COMPOSICAO_FOTOGRAFICA.md).
+- **Dependências:** nenhuma adicionada. A composição fecha bitmaps, libera o Canvas e mantém a URL temporária sob o ciclo de vida da sessão.
+- **Teste automatizado:** 73 testes passaram com `npm run test -- --maxWorkers=1`. Os sete novos casos cobrem composição, falhas, recursos e confirmação na cabine. A composição foi verificada com mocks de Canvas.
+- **Pendências:** instalar `src/assets/frames/feira-das-profissoes.png`, conferir a transparência, testar com as câmeras do evento e aprovar a revisão. Commit e PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.

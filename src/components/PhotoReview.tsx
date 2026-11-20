@@ -40,13 +40,19 @@ export function PhotoReview({
           <RotateCcw size={18} aria-hidden="true" /> Tirar novamente
         </Button>
         <Button variant="secondary" disabled aria-describedby="editing-availability">
-          <SlidersHorizontal size={18} aria-hidden="true" /> Personalizar
+          <SlidersHorizontal size={18} aria-hidden="true" /> Moldura automática
         </Button>
         <Button onClick={onConfirm} disabled={confirmed}>
           <Check size={18} aria-hidden="true" /> Confirmar foto
         </Button>
       </div>
-      <p id="editing-availability">Personalização disponível na Etapa 06.</p>
+      <p id="editing-availability">
+        {photo.frame === 'applied'
+          ? 'Moldura oficial aplicada.'
+          : photo.frame === 'missing'
+            ? 'Moldura oficial indisponível. Exibindo a foto original.'
+            : 'Falha ao aplicar a moldura. Exibindo a foto original.'}
+      </p>
       {!confirmed && gestureActive && (
         <p>Mostre o polegar para cima por 2 segundos para confirmar a foto.</p>
       )}

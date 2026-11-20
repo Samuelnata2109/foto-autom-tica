@@ -6,4 +6,8 @@ export type CapturedPhoto = {
   height: number;
 };
 
-export type SessionPhoto = CapturedPhoto & { url: string };
+export type SessionPhoto = CapturedPhoto & {
+  url: string;
+  original: CapturedPhoto;
+  frame: 'applied' | 'missing' | 'failed';
+};

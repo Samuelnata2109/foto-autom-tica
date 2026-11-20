@@ -2,3 +2,5 @@ AGENTS.md
 package-lock.json
 dist/
 coverage/
+public/mediapipe/wasm/
+public/models/

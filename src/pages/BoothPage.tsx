@@ -11,6 +11,7 @@ import { GestureGuide } from '../components/GestureGuide';
 import { EmptyState } from '../components/EmptyState';
 import { PhotoReview } from '../components/PhotoReview';
 import { useCamera } from '../hooks/useCamera';
+import { useGestureRecognition } from '../hooks/useGestureRecognition';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { cameraMessages } from '../services/camera';
 import type { TimerDuration } from '../types/photo';
@@ -22,6 +23,18 @@ export function BoothPage() {
   const ready = status === 'active' && Boolean(camera.settings.width && camera.settings.height);
   const capture = usePhotoCapture(camera.videoRef, camera.stream, ready);
   const { state, countdown, error } = capture;
+  const recognition = useGestureRecognition(
+    camera.videoRef,
+    camera.stream,
+    ready,
+    state.phase,
+    (command) => {
+      if (command === 'start5') capture.start(5);
+      if (command === 'start10') capture.start(10);
+      if (command === 'cancel') capture.cancel();
+      if (command === 'confirm') capture.confirm();
+    },
+  );
   const reviewing = state.phase === 'review' || state.phase === 'confirmed';
   const busy = state.phase === 'countdown' || state.phase === 'capturing';
   const shutter = useRef<HTMLButtonElement>(null);
@@ -50,9 +63,10 @@ export function BoothPage() {
               confirmed={state.phase === 'confirmed'}
               onRetake={() => capture.retake()}
               onConfirm={capture.confirm}
+              gestureActive={recognition.enabled && recognition.status === 'active'}
             />
           )}
-          <div className="booth-grid" hidden={reviewing}>
+          <div className="booth-grid" data-reviewing={reviewing}>
             <div className="booth-stage booth-stage--camera">
               <CameraViewport
                 video={
@@ -100,22 +114,24 @@ export function BoothPage() {
                   )
                 }
               />
-              <CameraControls camera={camera} locked={busy} />
-              <CaptureControls
-                duration={duration}
-                onDurationChange={setDuration}
-                onCapture={() => capture.start(duration)}
-                ready={ready}
-                busy={busy}
-                shutterRef={shutter}
-              />
+              {!reviewing && <CameraControls camera={camera} locked={busy} />}
+              {!reviewing && (
+                <CaptureControls
+                  duration={duration}
+                  onDurationChange={setDuration}
+                  onCapture={() => capture.start(duration)}
+                  ready={ready}
+                  busy={busy}
+                  shutterRef={shutter}
+                />
+              )}
               {error && (
                 <p className="capture-error" role="alert">
                   {error}
                 </p>
               )}
             </div>
-            <GestureGuide />
+            <GestureGuide recognition={recognition} phase={state.phase} />
           </div>
           {(state.phase === 'capturing' || reviewing) && (
             <div className="capture-flash" aria-hidden="true" />

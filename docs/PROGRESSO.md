@@ -80,7 +80,7 @@
 
 ## 20/11/2026 — Etapa 04/12 — Sistema fotográfico
 
-- **Status:** implementação pronta para revisão.
+- **Status:** integrada a `develop` pelo PR #8, merge `64df907`, conforme repositório e confirmação do desenvolvedor.
 - **Entregas:** temporizadores de 5 e 10 segundos, cancelamento, captura JPEG, revisão,
   confirmação em memória, repetição e limpeza de recursos.
 - **Arquivos:** `src/hooks/useCountdown.ts`, `src/hooks/usePhotoCapture.ts`,
@@ -94,8 +94,34 @@
   A cobertura inclui cancelamento, disparo único, erros, revisão e limpeza de recursos.
 - **Limitações:** a confirmação vale apenas para a cabine aberta. A foto é
   descartada ao sair e a personalização aguarda a Etapa 06.
-- **Validação física pendente:** conferir contagem, orientação, nitidez, flash,
-  revisão e cancelamento por desconexão em webcam integrada e DroidCam via Wi-Fi.
+- **Validação física relatada pelo desenvolvedor:** captura JPEG e revisão fotográfica
+  aprovadas com webcam integrada e DroidCam via Wi-Fi. Os ajustes externos do DroidCam
+  resolveram atraso, travamento e tela verde; as configurações não foram informadas.
+  Cancelamento por desconexão durante contagem permanece sem validação física registrada.
 - **Branch:** `feature/04-photo-capture`.
-- **Commit e PR:** referências no relatório de conclusão. Revisão pendente.
+- **Commit e PR:** `6b3aaaa`, PR #8 integrado.
 - **Próxima etapa:** 05 — Reconhecimento de gestos com IA, após revisão e autorização.
+
+## 20/11/2026 — Etapa 05/12 — Reconhecimento de gestos com IA
+
+- **Status:** implementação em `feature/05-gesture-recognition`, aguardando revisão.
+- **Entregas:** reconhecimento local de palma aberta, sinal de paz, punho fechado e polegar para cima; ações conforme estado da sessão; progresso temporal, confiança mínima, tolerância breve, cooldown e liberação do gesto; botão de ativação, estados de IA e orientação contextual; vídeo ativo durante revisão. Os controles manuais continuam disponíveis.
+- **Arquivos:** `src/config/gestureConfig.ts`, `src/types/gesture.ts`, `src/services/gestureRecognizer.ts`, `src/services/gestureValidation.ts`, `src/workers/gestureRecognition.worker.ts`, `src/hooks/useGestureRecognition.ts`, `src/components/GestureGuide.tsx`, `src/components/PhotoReview.tsx`, `src/pages/BoothPage.tsx`, `src/styles.css`, `tests/GestureValidation.test.ts`, `tests/GestureRecognition.test.tsx`, `scripts/setup-gesture-model.mjs`, recursos em `public/models/` e `public/mediapipe/wasm/`, README e documentação.
+- **Decisões:** modelo oficial float16/1, pacote npm fixo 1.2.3, CPU em worker prioritário, fallback com frequência menor na thread principal, entrada de inferência reduzida independentemente do JPEG. Sem segunda conexão de câmera ou envio de quadros.
+- **Dependência:** `@mediapipe/tasks-vision@1.2.3` (Apache-2.0).
+- **Validações automatizadas:** lint, typecheck, format:check e build passaram. A suíte passou com 35 testes ao limitar o Vitest a um worker. Uma tentativa paralela anterior teve timeout na inicialização de worker sob carga de I/O, sem falha de asserção nas suítes concluídas.
+- **Erros corrigidos:** teste legado do aviso da Etapa 05, expectativa temporal do novo teste e exclusão dos loaders WASM de fornecedor das verificações de código fonte.
+- **Limitações:** validação do modelo, precisão, latência e fluidez com webcam/DroidCam pendentes de teste físico. O modelo exige instalação inicial por `npm run setup:gesture-model` e sua licença de redistribuição requer revisão antes de implantação pública.
+- **Branch:** `feature/05-gesture-recognition`.
+- **Commit/PR:** registrar após publicação. Revisão pendente.
+- **Próxima etapa prevista:** 06 — Editor fotográfico, somente após revisão, merge e autorização.
+
+## 20/11/2026 — Revisão corretiva da Etapa 05
+
+- **Escopo:** validação temporal compatível com 5/10 Hz e variação de amostragem; agendamento do fallback atualizado após falha em operação; timeout de inicialização e inferência; descarte de resultados obsoletos e isolamento de promessas entre sessões.
+- **Arquivos:** hook de reconhecimento, serviço de validação, configuração, testes de gestos e documentação de reconhecimento.
+- **Dependências:** nenhuma adicionada.
+- **Branch:** feature/05-gesture-recognition; atualização do PR #9 para develop. Revisão pendente; sem merge.
+- **Validação:** resultados registrados no relatório desta revisão. Testes usam inferência simulada; validação física de precisão e fluidez continua pendente.
+- **Continuidade:** Etapa 06 depende de autorização.
+- **Resultados da revisão:** lint, typecheck, format:check e 43 testes passaram (35 preservados, 8 novos). Build de produção verificado antes do commit. Testes manuais de reconhecimento real continuam pendentes.

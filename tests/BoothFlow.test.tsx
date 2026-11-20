@@ -80,7 +80,7 @@ describe('Experiência da cabine', () => {
     expect(find<HTMLButtonElement>('.shutter').disabled).toBe(true);
     expect(container.querySelector('video')).toBeNull();
     expect(container.querySelectorAll('.gesture-guide li')).toHaveLength(4);
-    expect(find('.gesture-guide').textContent).toContain('Etapa 05');
+    expect(find('.gesture-guide').textContent).toContain('IA desativada');
   });
 });
 

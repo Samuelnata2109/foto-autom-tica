@@ -45,11 +45,13 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
    O JPEG usa qualidade 0,95. A revisão usa uma Object URL para o Blob em memória.
    Ao repetir ou sair, a URL é revogada. O espelhamento visual do vídeo não faz parte
    dos pixels do JPEG. A confirmação mantém a foto na sessão sem enviar ou gravar arquivos.
-3. **Gestos.** Na Etapa 05, MediaPipe Tasks Vision analisará amostras do vídeo localmente com
-   modelo pré-treinado. Limitar frequência e manter apenas um frame em processamento. Avaliar
-   Worker quando a inferência impactar a interface. Confiança configurável, confirmação ao longo
-   de múltiplos frames, intervalo entre disparos e bloqueio fora da prévia reduzem falsos
-   acionamentos. O gesto usa o mesmo comando de captura da interface manual.
+3. **Gestos.** Na Etapa 05, o Gesture Recognizer do MediaPipe analisa quadros reduzidos do
+   vídeo existente. `useGestureRecognition` limita frequência, descarta quadros antigos e envia
+   um quadro por vez ao worker. O processamento usa modelo e WASM locais; se o worker falhar,
+   tenta CPU na thread principal com limite menor. `GestureValidation` confirma o mesmo gesto
+   por tempo monotônico, aplica confiança, tolerância e intervalo entre comandos. A página
+   encaminha os quatro comandos às ações existentes de `usePhotoCapture`. O vídeo permanece
+   montado em miniatura durante a revisão. Veja [RECONHECIMENTO_GESTOS.md](RECONHECIMENTO_GESTOS.md).
 4. **Edição.** Na Etapa 06, manter a foto original em memória e representar filtros e molduras
    como parâmetros reversíveis. Compor a prévia em resolução reduzida e exportar o resultado
    em resolução adequada usando Canvas.

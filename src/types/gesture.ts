@@ -18,6 +18,7 @@ export type GestureWorkerRequest =
   | { type: 'frame'; overlay?: boolean; frame: ImageBitmap; timestamp: number; id: number };
 
 export type GestureWorkerResponse =
-  | { type: 'ready' }
-  | { type: 'result'; id: number; detection: GestureDetection }
+  | { type: 'ready'; startupMs: number }
+  | { type: 'started'; id: number }
+  | { type: 'result'; id: number; detection: GestureDetection; inferenceMs: number }
   | { type: 'error'; message: string };

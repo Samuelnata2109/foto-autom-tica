@@ -47,8 +47,8 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
    dos pixels do JPEG. A confirmação mantém a foto na sessão sem enviar ou gravar arquivos.
 3. **Gestos.** Na Etapa 05, o Gesture Recognizer do MediaPipe analisa quadros reduzidos do
    vídeo existente. `useGestureRecognition` limita frequência, descarta quadros antigos e envia
-   um quadro por vez ao worker. O processamento usa modelo e WASM locais; se o worker falhar,
-   tenta CPU na thread principal com limite menor. `GestureValidation` confirma o mesmo gesto
+   um quadro por vez ao worker. O processamento usa modelo e WASM locais. Se o worker falhar,
+   suspende o reconhecimento até nova tentativa manual. `GestureValidation` confirma o mesmo gesto
    por tempo monotônico, aplica confiança, tolerância e intervalo entre comandos. A página
    encaminha os quatro comandos às ações existentes de `usePhotoCapture`. O vídeo permanece
    montado em miniatura durante a revisão. Veja [RECONHECIMENTO_GESTOS.md](RECONHECIMENTO_GESTOS.md).

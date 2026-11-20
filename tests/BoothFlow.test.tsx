@@ -140,7 +140,7 @@ describe('Câmera da cabine', () => {
     Object.defineProperties(video, { videoWidth: { value: 1280 }, videoHeight: { value: 720 } });
     await act(async () => video.dispatchEvent(new Event('playing')));
     expect(status()).toBe('Câmera ativa');
-    expect(find('.camera-controls__quality').textContent).toBe('1280 × 720 · 24 FPS');
+    expect(find('.camera-controls__quality').textContent).toBe('1280 × 720 · 24 FPS informados');
     expect(video.dataset.mirrored).toBe('true');
     await click('.camera-controls__mirror input');
     expect(video.dataset.mirrored).toBe('false');

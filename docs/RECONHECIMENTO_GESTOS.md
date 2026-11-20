@@ -10,7 +10,7 @@
 
 ## Fluxo e parâmetros
 
-O participante ativa a IA após abrir a câmera. O hook usa o `HTMLVideoElement` e o `MediaStream` já abertos; nenhum novo `getUserMedia` é feito. Um `ImageBitmap` proporcional de até 320 px de largura é enviado ao worker, que processa no máximo uma mão com CPU e retorna apenas nome e confiança do gesto. Apenas quadros novos são aceitos. Há no máximo uma inferência pendente e aproximadamente 10 inferências por segundo. Quadros intermediários são descartados. Se o worker falhar, a alternativa na thread principal limita a 5 inferências por segundo; pode afetar a fluidez em máquinas lentas.
+O participante ativa a IA após abrir a câmera. O hook reutiliza o `HTMLVideoElement` e o `MediaStream` já abertos. O worker recebe um `ImageBitmap` proporcional de até 320 px de largura e analisa no máximo uma mão com CPU/WASM. Quadros novos são amostrados conforme a carga, com teto de 10 Hz e uma inferência pendente. Em caso de falha, a cabine suspende a IA e mantém os controles manuais. A configuração vigente e as medições estão no fim deste documento.
 
 `src/config/gestureConfig.ts` concentra confiança mínima 0,80, confirmação estável por 2 s, tolerância de 180 ms a perda momentânea e intervalo de 2 s entre comandos. O tempo vem de `performance.now()`, sem supor frequência fixa de quadros. A perda de estabilidade ou troca de gesto reinicia a confirmação; o mesmo gesto deve ser liberado ou trocado para repetir. A mudança de estado limpa o progresso. Estados permitidos: `idle` para palma aberta (5 s) e paz (10 s), `countdown` para punho fechado (cancelar), `review` para polegar para cima (confirmar). `capturing` e `confirmed` não aceitam comandos.
 
@@ -24,12 +24,12 @@ Com webcam integrada e DroidCam via Wi-Fi, em `localhost` ou HTTPS:
 2. Testar cada gesto por 2 s, gestos desconhecidos, baixa iluminação, mãos múltiplas e distâncias de evento.
 3. Verificar cancelamento na contagem e confirmação na revisão, sem tocar no computador; verificar que manter um gesto não repete comando.
 4. Trocar e desconectar a câmera, desligar a IA, ocultar a aba e sair da cabine durante carregamento/inferência.
-5. Comparar fluidez e latência do vídeo com IA ligada/desligada, observar CPU e memória por período prolongado. Se ocorrer fallback, verificar novamente latência.
+5. Comparar fluidez e latência do vídeo com IA ligada/desligada, observar CPU e memória por período prolongado. Se a IA suspender, conferir a fluidez e a retomada manual.
 6. Confirmar todos os botões manuais e ausência de chamadas de rede com quadros ou coordenadas.
 
 Essas verificações dependem de hardware e não foram realizadas pelos testes automatizados.
 
-## Revisão corretiva da Etapa 05
+## Revisão corretiva da Etapa 05 — histórico
 
 O intervalo normal entre amostras aceita o período configurado (100 ms no worker ou 200 ms no fallback) mais 150 ms de variação. Uma interrupção maior reinicia a estabilidade sem somar o intervalo. Detecção ausente usa a tolerância separada de 180 ms; intervalos sem detecção não somam tempo de confirmação.
 
@@ -49,7 +49,7 @@ Na imagem pública [thumb_up.jpg](https://storage.googleapis.com/mediapipe-asset
 
 A geometria classificou como `Thumb_Up` os landmarks reais extraídos da imagem pública em ambas as larguras após considerar a extensão do polegar em relação às duas bordas da palma. O teste com uma foto estática não mede precisão para diferentes participantes. O primeiro quadro com a foto levou de 5,9 a 8,0 s em Chrome headless sob carga. O worker prepara o grafo com um quadro vazio antes de anunciar que está pronto, dentro do timeout de inicialização existente. O timeout de resposta dos quadros da câmera continua em 3 s.
 
-## Calibração direcionada — configuração vigente
+## Calibração direcionada — histórico
 
 O usuário aprovou fisicamente palma e paz, mas relatou punho identificado sem cancelamento, polegar inadequado, timeout do worker e fallback a aproximadamente 2,4 Hz. A etapa permanece **em calibração**. Os limites anteriores acima registram o histórico, não a configuração atual.
 
@@ -64,3 +64,17 @@ O usuário aprovou fisicamente palma e paz, mas relatou punho identificado sem c
 Execute `npm run dev` (e `npm run setup:gesture-model` caso o modelo local esteja ausente). Com webcam e DroidCam, ative a IA e aguarde até 60 s; confira o backend e registre eventual erro específico. Durante o carregamento, verifique vídeo e captura manual. Abra o diagnóstico, ative a observação sem comandos e registre classe bruta/confiança/geometria e métricas do polegar nas duas mãos e diferentes orientações. Não é necessário armazenar imagens.
 
 Desative a observação para testar ações: palma → 5 s; paz → 10 s; punho estável por pelo menos 800 ms durante a contagem → cancelar (inclusive logo após iniciar por gesto); polegar por 2 s na revisão → confirmar. O atraso até a próxima amostra depende da frequência real. Confira também punho breve, mão relaxada, dedos parcialmente abertos, ausência de mão e pausas: não devem disparar comandos. Repita mantendo o gesto após a ação e com IA desligada/reativada. Registre frequência, estabilidade, motivo de bloqueio e comando executado. A aprovação física dos quatro gestos é necessária para encerrar a Etapa 05.
+
+## Proteção da prévia e medições — configuração vigente
+
+O relato com DroidCam registrou prévia fluida com a IA desligada e travamentos após `Tempo limite de inferência`, com backend `CPU na thread principal`. O código anterior executava `recognizeForVideo` de forma síncrona na interface depois do timeout. Esse caminho pode bloquear a renderização mesmo com limite de 5 Hz. O timeout antigo iniciava após transferir o bitmap e media todo o percurso até a resposta, incluindo execução e entrega. Ele não distinguia o cálculo do modelo da espera por mensagens. O ensaio histórico de 5,9–8,0 s no primeiro quadro com mão indica que 3 s podem ser insuficientes durante o aquecimento. O relato físico ainda não permite determinar qual fase excedeu o limite. Consulte a [documentação do Gesture Recognizer](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer?tab=Web).
+
+- O MediaPipe usa CPU/WASM exclusivamente no worker. Uma falha encerra o worker e suspende a IA, preservando a câmera e os botões. **Tentar reativar IA** cria um worker novo sob demanda. Não há tentativas automáticas em ciclo.
+- O inicializador tem até 60 s. A preparação do bitmap tem até 3 s. A primeira amostra de vídeo aquece o caminho real, tem orçamento separado de 12 s e não executa comandos. Após ela, cada resposta continua limitada a 3 s. O worker sinaliza o início de cada execução para distinguir atraso de entrega e atraso após o início.
+- A cabine prepara um quadro novo por vez via `requestVideoFrameCallback`, com temporizador em navegadores sem essa API. Enquanto trabalha, nenhum quadro entra em fila. Em regime, a média exponencial do custo entre preparação e resposta ajusta o intervalo entre 100 e 500 ms, com alvo de duas vezes o custo. Após cada resposta, o agendamento também reserva uma pausa de metade do custo observado, limitada a 500 ms. O teto de 10 Hz é um limite de amostragem. Quadros mais lentos podem reduzir a frequência efetiva abaixo de 2 Hz e atrasar ou impedir a confirmação por falta de continuidade. Resultados com mais de 750 ms de idade são descartados para decisões de gesto. A entrada mantém 320 px de largura máxima. O bitmap é transferido e fechado no worker, ou fechado localmente se a operação ficar obsoleta antes da transferência.
+- O painel separa os valores reportados por `MediaStreamTrack.getSettings()`, a resolução entregue ao elemento de vídeo, o FPS processado e a estimativa de FPS exibido. A diferença entre os contadores totais e de descarte é amostrada a cada segundo com o painel aberto. O driver virtual pode entregar 1920 × 1080 ao navegador com uma origem configurada para 640 × 480. O FPS reportado na faixa é nominal. O navegador não enxerga diretamente a resolução ou o FPS físico do celular atrás do driver. Referências: [callback de quadros](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement/requestVideoFrameCallback) e [contadores de reprodução](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement/getVideoPlaybackQuality).
+- O painel mostra frequência média de respostas (inclui pausas), média e máximo dos tempos medidos no worker, preparação média no navegador, tempo de inicialização e contadores de timeout e outras falhas da sessão. As métricas da IA são publicadas em intervalos de pelo menos 500 ms durante a inferência, com atualização adicional em mudanças de estado. A sobreposição opcional recebe os landmarks para acompanhar os quadros amostrados.
+
+No Chrome headless, o worker do build classificou quatro quadros derivados da imagem pública [thumb_up.jpg](https://storage.googleapis.com/mediapipe-assets/thumb_up.jpg) como `Thumb_Up`. Inicializou em 13,16 s, com preparação de 3–10 ms e sinal de início recebido em 1–6 ms após o envio. A primeira inferência levou 892 ms e as três seguintes levaram 291–366 ms. O ensaio isolou o worker com uma imagem estática. O registro histórico de 5,9–8,0 s veio de outra execução sob carga, sem comparação controlada.
+
+Para comparar no equipamento do evento, mantenha a mesma câmera, resolução e iluminação. Deixe os pontos da mão desligados, abra o painel e anote os FPS de prévia em três janelas de 20 s: IA desligada, IA ligada em regime e IA desligada novamente. Compare webcam e DroidCam. Registre as configurações da faixa, média e máximo da inferência, tempo de preparação, frequência da IA e eventuais falhas. Repita palma, paz, punho e polegar, teste a retomada após falha e confira os controles manuais e o JPEG com a moldura oficial. Nenhuma medição física posterior foi concluída nesta correção.

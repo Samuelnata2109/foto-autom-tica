@@ -40,3 +40,18 @@ Usar Supabase com bucket privado e RLS. Autorizar acesso por evento e foto. Comp
 com token temporário revogável e isolar credenciais de publicação e administração no
 servidor. A escolha de backend para essas operações e os prazos de retenção e expiração
 serão refinados conforme os requisitos de operação e privacidade.
+
+## DT-05 — Interface da cabine e prévias
+
+**Status:** adotada na Etapa 02.
+
+React Router usa URLs com fragmento para permitir recarregar as telas em hospedagem
+estática. O link e as rotas de prévia dependem de `import.meta.env.DEV`. A seleção do
+temporizador usa rádios nativos e estado local. Motion respeita a preferência de
+movimento reduzido. Os ícones usam Lucide e desenhos vetoriais para sinal de paz e
+punho fechado. Fontes WOFF2 são servidas localmente pelo build.
+
+Vitest com jsdom verifica navegação e eventos DOM. O mínimo de Node.js acompanha
+as versões suportadas por React Router e jsdom. A API `motion/mini` executa as
+animações compartilhadas sem introduzir o conflito de tipos das declarações React
+do Motion com a versão instalada de `csstype`.

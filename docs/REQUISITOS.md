@@ -18,6 +18,11 @@ Os requisitos marcados como previstos serão refinados e validados na etapa indi
 | RF-10 | 11    | Previsto     | Permitir que operadores autorizados administrem eventos, configuração, retenção e exclusões.                                                      |
 | RF-11 | 03–11 | Previsto     | Informar o uso do vídeo e solicitar autorizações separadas antes de captura, armazenamento, compartilhamento e publicação.                        |
 
+Na Etapa 02 foram implementadas a navegação entre recepção e cabine, a seleção
+visual de 5 ou 10 segundos, a tela cheia quando suportada e a apresentação de
+estados indisponíveis. As prévias de contagem, revisão e compartilhamento estão
+disponíveis no servidor de desenvolvimento.
+
 ## Não funcionais
 
 | ID     | Critério                                                                                                           | Validação prevista                                                                                                                   |

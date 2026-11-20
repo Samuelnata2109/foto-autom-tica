@@ -1,8 +1,9 @@
 # Arquitetura do AI Photo Booth
 
-A Etapa 01 entrega uma aplicação React e TypeScript compilada pelo Vite. O ponto de entrada
-`src/main.tsx` monta a página provisória de `src/pages/` e carrega o CSS compilado pelo Tailwind.
-Os módulos abaixo são os limites previstos para as etapas em que forem necessários.
+A aplicação React e TypeScript é compilada pelo Vite. `src/main.tsx` monta o roteador e
+carrega os estilos do Tailwind. `src/App.tsx` define rotas, transições e foco ao navegar.
+As telas em `src/pages/` compõem `src/components/` e usam a API de tela cheia via
+`src/hooks/`. Consulte o [fluxo e o design system](IDENTIDADE_VISUAL.md).
 
 ## Estrutura
 
@@ -19,8 +20,8 @@ Os módulos abaixo são os limites previstos para as etapas em que forem necess�
 | `src/types/`, `src/utils/`                                | Contratos compartilhados e funções puras reutilizáveis.                              |
 | `tests/`, `docs/`                                         | Verificações automatizadas e documentação do projeto.                                |
 
-`src/pages/`, `tests/` e `docs/` já existem. Os demais diretórios entram com seu primeiro
-arquivo útil. Fotos, dados privados e credenciais ficam fora de `public/`.
+Os diretórios planejados entram com seu primeiro arquivo útil. `public/licenses/`
+contém as licenças das fontes. Fotos, dados privados e credenciais ficam fora de `public/`.
 
 Páginas compõem componentes e acionam fluxos por hooks. Hooks coordenam o estado e chamam
 serviços. Serviços encapsulam navegador e integrações e não dependem das telas. Frames de vídeo

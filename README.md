@@ -3,11 +3,13 @@
 Projeto de cabine fotográfica interativa. A jornada prevista inclui prévia ao vivo, captura
 manual ou por gesto, edição e compartilhamento com autorização do participante.
 
-Na Etapa 01, a aplicação exibe uma página provisória para validar a configuração do projeto.
+A Etapa 02 entrega a recepção e a cabine para eventos escolares, com visor, seleção
+visual de temporizador, guia de gestos e controle de tela cheia.
 
 ## Executar localmente
 
-Use Node.js 24 LTS (recomendado), Node.js 22.13 ou superior na série 22, ou Node.js 26, com npm.
+Use Node.js 24.15 ou superior na série 24 LTS (recomendado), 22.22.2 ou superior na
+série 22, ou Node.js 26, com npm.
 Esta etapa não requer configuração de ambiente nem acesso à câmera.
 
 ```sh
@@ -15,8 +17,13 @@ npm ci
 npm run dev
 ```
 
-Abra o endereço indicado pelo Vite (por padrão, `http://localhost:5173`). A página deve exibir
-“AI Photo Booth”, identificar o projeto e informar que a aplicação está em desenvolvimento.
+Abra o endereço indicado pelo Vite (por padrão, `http://localhost:5173`). Selecione
+**Iniciar experiência** e use **Início** para voltar. Na cabine, Tab alcança o grupo
+Temporizador e as setas alternam entre 5 e 10 segundos.
+
+Em `npm run dev`, **Prévias de desenvolvimento** abre os exemplos de contagem, revisão e
+compartilhamento. Câmera, captura e reconhecimento são identificados como indisponíveis.
+As prévias ficam fora do build de produção.
 
 ## Verificações
 
@@ -34,6 +41,7 @@ Para aplicar a formatação, execute `npm run format`.
 ## Documentação
 
 - [Arquitetura e responsabilidades](docs/ARQUITETURA.md)
+- [Identidade visual e componentes](docs/IDENTIDADE_VISUAL.md)
 - [Requisitos funcionais e não funcionais](docs/REQUISITOS.md)
 - [Roadmap oficial](docs/ROADMAP.md)
 - [Progresso do projeto](docs/PROGRESSO.md)

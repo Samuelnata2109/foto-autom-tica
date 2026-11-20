@@ -2,7 +2,7 @@
 
 ## 19/11/2026 — Etapa 01/12 — Planejamento e arquitetura
 
-- **Status:** implementação pronta para revisão.
+- **Status:** integrada a `develop` pelo [PR #3](https://github.com/Samuelnata2109/foto-autom-tica/pull/3), merge `c8bd557`.
 - **Entregas:** página provisória em português, configuração da aplicação e das
   verificações automatizadas, estrutura modular e planejamento técnico das próximas etapas.
 - **Arquivos:** `index.html`, `src/main.tsx`, `src/pages/HomePage.tsx`, `src/styles.css`,
@@ -21,5 +21,31 @@
 - **Limitações:** a página é provisória. Vídeo, gestos, fotos e integrações permanecem
   no planejamento e serão validados nas respectivas etapas.
 - **Branch:** `feature/01-project-architecture`.
-- **Commits e PR:** referências no relatório de conclusão. A revisão permanece pendente.
+- **Commit de implementação:** `bac3f59`.
 - **Próxima etapa:** 02 — Interface e identidade visual, após revisão e autorização.
+
+## 19/11/2026 — Etapa 02/12 — Interface e identidade visual
+
+- **Status:** implementação pronta para revisão.
+- **Entregas:** recepção, cabine, guia lateral de gestos, seleção visual de 5 e 10 segundos,
+  controle de tela cheia e prévias de contagem, revisão e compartilhamento.
+- **Arquivos:** `src/App.tsx`, `src/main.tsx`, `src/pages/`, `src/components/`, `src/hooks/`,
+  `src/styles.css`, `tests/BoothFlow.test.tsx`, `public/licenses/`, manifestos npm, README e
+  documentação em `docs/`. O teste da página provisória foi substituído pelo teste do fluxo.
+- **Decisões:** design tokens em CSS, fontes latinas locais, rotas com fragmento,
+  rádio nativo, Motion com movimento reduzido e prévias exclusivas de desenvolvimento.
+- **Dependências:** Lucide React, Motion, React Router, Fontsource Inter e Space Grotesk.
+  jsdom para testes. Node.js 22.22.2+, 24.15+ ou 26 nas respectivas séries.
+- **Validação automatizada:** lint, typecheck, build e 6 testes passaram em Node.js 26.13.1.
+  npm reportou zero vulnerabilidades na instalação.
+- **Chrome headless:** recepção e cabine em 1920×1080, 1366×768, 1280×720, 768×1024,
+  390×844 e 320×568. Foram verificados ausência de rolagem horizontal, posição do painel
+  de gestos, navegação e seleção por teclado. As três prévias passaram em 320×568 com
+  movimento reduzido. Link e endereço direto das prévias foram verificados em produção.
+- **Correções:** imports de fontes e do ícone de compartilhamento, conflito de tipos do Motion
+  e rolagem horizontal na recepção de 320 px.
+- **Limitações e pendências:** validação presencial em monitor de evento, incluindo tela cheia,
+  e revisão humana. A seleção de duração é visual. Recursos fotográficos seguem no roadmap.
+- **Branch:** `feature/02-ui-design`.
+- **Commit e PR:** referências no relatório de conclusão. Revisão pendente.
+- **Próxima etapa:** 03 — Integração da câmera, após revisão e autorização.

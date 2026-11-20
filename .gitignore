@@ -10,3 +10,5 @@ coverage/
 .netrc
 .DS_Store
 Thumbs.db
+public/models/*.task
+public/models/*.download

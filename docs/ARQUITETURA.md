@@ -29,22 +29,29 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
 
 ## Fluxo previsto da cabine
 
-1. **Vídeo ao vivo.** Na Etapa 03, o navegador do celular poderá solicitar a câmera com
-   `getUserMedia` (somente vídeo) e transmitir as faixas para a cabine via WebRTC. Planeja-se
-   pareamento de curta duração e sinalização autenticada para SDP e ICE. Validar HTTPS, troca de
-   câmera, codecs e desempenho em Wi-Fi local; avaliar STUN/TURN quando a conexão direta falhar.
-   Manter uma câmera ligada ao computador como alternativa. Exibir estados claros para
-   permissão negada, desconexão e reconexão. Encerrar faixas e conexão ao trocar a fonte ou sair.
-2. **Temporizador e captura.** Na Etapa 04, controles manuais iniciarão uma contagem de 5 ou 10
-   segundos. O fluxo compartilhado passa por prévia, contagem, captura e revisão, com cancelamento
-   ou reinício se a fonte ficar indisponível. Usar um prazo monotônico para a contagem, bloquear
-   disparos concorrentes e produzir um único `Blob` com Canvas na resolução do frame recebido
-   (`videoWidth` e `videoHeight`), independente do tamanho da prévia.
-3. **Gestos.** Na Etapa 05, MediaPipe Tasks Vision analisará amostras do vídeo localmente com
-   modelo pré-treinado. Limitar frequência e manter apenas um frame em processamento. Avaliar
-   Worker quando a inferência impactar a interface. Confiança configurável, confirmação ao longo
-   de múltiplos frames, intervalo entre disparos e bloqueio fora da prévia reduzem falsos
-   acionamentos. O gesto usa o mesmo comando de captura da interface manual.
+1. **Vídeo ao vivo.** Na Etapa 03, o cliente DroidCam recebe o vídeo do celular via USB
+   ou Wi-Fi e o expõe ao Windows como webcam virtual. A cabine enumera as câmeras
+   com `enumerateDevices` e abre a escolhida com `getUserMedia`, somente vídeo.
+   `useCamera` mantém as referências tipadas de vídeo e stream, controla o ciclo de
+   vida das faixas e acompanha mudanças na lista de dispositivos. O visor mostra o vídeo
+   com espelhamento opcional em CSS. As configurações pedidas são ideais, e a interface
+   mostra apenas as dimensões e FPS fornecidos pelo navegador. A aplicação não usa
+   WebRTC nem comunica diretamente com o celular.
+2. **Temporizador e captura.** `useCountdown` usa um prazo monotônico para as contagens
+   de 5 ou 10 segundos. `usePhotoCapture` coordena disparo, cancelamento, revisão,
+   confirmação e repetição. Apenas uma operação pode usar a fonte por vez. Mudança
+   ou perda da fonte cancela a operação pendente. `photoCapture.ts` valida a faixa e
+   copia somente o quadro do vídeo para o Canvas em `videoWidth × videoHeight`.
+   O JPEG usa qualidade 0,95. A revisão usa uma Object URL para o Blob em memória.
+   Ao repetir ou sair, a URL é revogada. O espelhamento visual do vídeo não faz parte
+   dos pixels do JPEG. A confirmação mantém a foto na sessão sem enviar ou gravar arquivos.
+3. **Gestos.** Na Etapa 05, o Gesture Recognizer do MediaPipe analisa quadros reduzidos do
+   vídeo existente. `useGestureRecognition` limita frequência, descarta quadros antigos e envia
+   um quadro por vez ao worker. O processamento usa modelo e WASM locais. Se o worker falhar,
+   suspende o reconhecimento até nova tentativa manual. `GestureValidation` confirma o mesmo gesto
+   por tempo monotônico, aplica confiança, tolerância e intervalo entre comandos. A página
+   encaminha os quatro comandos às ações existentes de `usePhotoCapture`. O vídeo permanece
+   montado em miniatura durante a revisão. Veja [RECONHECIMENTO_GESTOS.md](RECONHECIMENTO_GESTOS.md).
 4. **Edição.** Na Etapa 06, manter a foto original em memória e representar filtros e molduras
    como parâmetros reversíveis. Compor a prévia em resolução reduzida e exportar o resultado
    em resolução adequada usando Canvas.

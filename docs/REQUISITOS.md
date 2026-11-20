@@ -7,9 +7,9 @@ Os requisitos marcados como previstos serão refinados e validados na etapa indi
 | ID    | Etapa | Status       | Critério de aceitação                                                                                                                             |
 | ----- | ----- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | RF-01 | 01    | Implementado | Exibir nome, identificação do projeto e aviso de desenvolvimento na página inicial.                                                               |
-| RF-02 | 03    | Previsto     | Receber vídeo ao vivo do celular pareado, selecionar uma câmera local quando disponível e recuperar de desconexões.                               |
-| RF-03 | 04    | Previsto     | Permitir disparo manual e cancelar contagens de 5 ou 10 segundos. Gerar uma foto por disparo, na resolução da fonte de vídeo, e exibir a revisão. |
-| RF-04 | 05    | Previsto     | Reconhecer o gesto configurado localmente e iniciar a mesma contagem do comando manual quando a sessão estiver pronta.                            |
+| RF-02 | 03    | Implementado | Exibir vídeo ao vivo de webcam física ou virtual DroidCam, trocar de câmera e permitir reconexão manual.                                          |
+| RF-03 | 04    | Implementado | Permitir disparo manual e cancelar contagens de 5 ou 10 segundos. Gerar uma foto por disparo, na resolução da fonte de vídeo, e exibir a revisão. |
+| RF-04 | 05    | Implementado | Reconhecer quatro gestos localmente e acionar contagem, cancelamento ou confirmação conforme o estado da cabine.                                  |
 | RF-05 | 06    | Previsto     | Aplicar e remover filtros e molduras, visualizar a composição e exportar a foto.                                                                  |
 | RF-06 | 07    | Previsto     | Segmentar as pessoas e substituir o cenário com opção de voltar ao fundo original.                                                                |
 | RF-07 | 08    | Previsto     | Armazenar a foto autorizada em área privada do Supabase e permitir sua exclusão.                                                                  |
@@ -36,11 +36,11 @@ disponíveis no servidor de desenvolvimento.
 
 ## Riscos técnicos
 
-| Risco                                                         | Mitigação planejada                                                                                                 |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Bloqueios de permissão, codec ou rota de rede no vídeo remoto | Prototipar pareamento em HTTPS, testar em iOS, Android e desktop em redes diferentes e oferecer câmera local.       |
-| Falsos gestos e sobrecarga em computadores modestos           | Calibrar confiança e janela temporal, medir falsos disparos e amostrar frames com alternativa manual.               |
-| Captura duplicada ou foto com tamanho incorreto               | Centralizar disparos, usar as dimensões reais do vídeo e cobrir cancelamento, concorrência e falhas com testes.     |
-| Máscaras imprecisas e consumo de memória com fotos grandes    | Medir com grupos e luz variada, usar prévia reduzida e preservar a opção de fundo original.                         |
-| Exposição indevida de fotos ou links encaminhados             | Armazenamento privado, políticas por evento, links revogáveis e curtos, exclusão e trilha de auditoria sem imagens. |
-| Mudanças ou indisponibilidade da integração com Instagram     | Validar a API oficial e permissões na Etapa 10 e oferecer download quando a integração falhar.                      |
+| Risco                                                      | Mitigação planejada                                                                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Permissão bloqueada ou perda de sinal da webcam virtual    | Orientar uso de HTTPS ou localhost, diagnosticar a fonte pelo cliente DroidCam e oferecer webcam física.            |
+| Falsos gestos e sobrecarga em computadores modestos        | Calibrar confiança e janela temporal, medir falsos disparos e amostrar frames com alternativa manual.               |
+| Captura duplicada ou foto com tamanho incorreto            | Centralizar disparos, usar as dimensões reais do vídeo e cobrir cancelamento, concorrência e falhas com testes.     |
+| Máscaras imprecisas e consumo de memória com fotos grandes | Medir com grupos e luz variada, usar prévia reduzida e preservar a opção de fundo original.                         |
+| Exposição indevida de fotos ou links encaminhados          | Armazenamento privado, políticas por evento, links revogáveis e curtos, exclusão e trilha de auditoria sem imagens. |
+| Mudanças ou indisponibilidade da integração com Instagram  | Validar a API oficial e permissões na Etapa 10 e oferecer download quando a integração falhar.                      |

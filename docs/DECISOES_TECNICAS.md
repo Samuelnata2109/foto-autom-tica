@@ -24,13 +24,21 @@ MediaPipe Tasks Vision, o cliente Supabase e a biblioteca QRCode ficam para suas
 
 ## DT-03 — Vídeo e processamento no dispositivo
 
-**Status:** proposta a validar nas Etapas 03 a 07.
+**Status:** entrada de vídeo adotada na Etapa 03, Canvas na Etapa 04 e MediaPipe Tasks Vision na Etapa 05.
 
-Usar MediaDevices para a câmera, WebRTC para o vídeo remoto, Canvas para captura e
-composição e MediaPipe para inferência local. Essa divisão mantém os frames no fluxo de
-vídeo e reduz a dependência de serviços externos. O protótipo de câmera deve avaliar
-sinalização, relay e recuperação antes de definir a topologia final. A necessidade de
-Worker será medida em hardware de referência.
+## Etapa 05 — inferência local de gestos
+
+Modelo oficial Gesture Recognizer float16/1 e `@mediapipe/tasks-vision` 1.2.3 fixado, com WASM da mesma instalação servidos pelo Vite sob `BASE_URL`. CPU é a escolha inicial; GPU não é presumida mais rápida. A inferência síncrona roda prioritariamente em Web Worker. Quando o worker não inicializa, a alternativa reduz a frequência na thread principal e mantém controles manuais. Um único quadro novo de até 320 px de largura é processado por vez, sem afetar a resolução da fotografia. A foto e o vídeo não são enviados a servidores. Os quatro comandos reutilizam `usePhotoCapture`.
+
+Usar MediaDevices para webcams locais, incluindo a webcam virtual do DroidCam.
+O transporte USB foi a primeira opção para aproveitar o cabo e dispensar sinalização
+WebRTC. Wi-Fi pelo cliente DroidCam usa a mesma interface de câmera no computador.
+A escolha do transporte fica no DroidCam. Foi relatado que o USB não funcionou no
+equipamento utilizado, enquanto o DroidCam funcionou por Wi-Fi.
+
+Canvas é usado para a captura, e MediaPipe permanece previsto para inferência local.
+O stream permanece original para ambos. O espelhamento é aplicado somente ao elemento
+de vídeo.
 
 ## DT-04 — Persistência e integrações com acesso restrito
 

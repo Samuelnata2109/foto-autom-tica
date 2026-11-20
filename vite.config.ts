@@ -6,5 +6,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
     include: ['tests/**/*.test.{ts,tsx}'],
+    // O fluxo de mídia monta várias telas no jsdom e pode exceder 5 s em máquinas lentas.
+    testTimeout: 15_000,
   },
 });

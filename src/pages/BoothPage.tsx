@@ -155,7 +155,7 @@ export function BoothPage() {
             </div>
             <div>
               <GestureGuide recognition={recognition} phase={state.phase} />
-              <GestureDiagnostics ai={recognition} phase={state.phase} />
+              <GestureDiagnostics ai={recognition} camera={camera} phase={state.phase} />
             </div>
           </div>
           {(state.phase === 'capturing' || reviewing) && (

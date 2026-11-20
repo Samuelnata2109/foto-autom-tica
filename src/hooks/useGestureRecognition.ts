@@ -1,5 +1,4 @@
 ﻿import { useEffect, useRef, useState, type RefObject } from 'react';
-import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 import { gestureConfig as config } from '../config/gestureConfig';
 import { GestureVote } from '../services/gestureVote';
 import { confirmationDuration, GestureValidation } from '../services/gestureValidation';
@@ -34,15 +33,22 @@ export function useGestureRecognition(
   const [backend, setBackend] = useState('—');
   const [sample, setSample] = useState<{
     detection: GestureDetection;
-    hz: number;
-    interval: number;
-    ms: number;
     reason: string;
     stable: number;
     validated: GestureName | null;
   } | null>(null);
+  const [performanceSample, setPerformanceSample] = useState<{
+    hz: number;
+    meanInference: number | null;
+    maxInference: number | null;
+    meanPreparation: number | null;
+    startupMs?: number;
+  } | null>(null);
+  const [incidents, setIncidents] = useState({ timeouts: 0, failures: 0 });
+  const [retryVersion, setRetryVersion] = useState(0);
+  const wake = useRef<(() => void) | null>(null);
   const [lastCommand, setLastCommand] = useState<GestureCommand | null>(null);
-  const vote = useRef(new GestureVote());
+  const [vote] = useState(() => new GestureVote());
   const diagnosticOnly = debug && observe;
   const latest = useRef({
     phase,
@@ -64,12 +70,11 @@ export function useGestureRecognition(
     diagnosticOnly,
     overlay,
   };
-  const generation = useRef(0);
   const epoch = useRef(0);
-  const validator = useRef(new GestureValidation());
+  const [validator] = useState(() => new GestureValidation());
   const clearFeedback = (keepLatch = false) => {
-    validator.current.reset(keepLatch);
-    vote.current.reset();
+    validator.reset(keepLatch);
+    vote.reset();
     setSample(null);
     setGesture(null);
     setProgress(0);
@@ -78,142 +83,219 @@ export function useGestureRecognition(
   useEffect(() => {
     epoch.current++;
     clearFeedback(true);
+    wake.current?.();
   }, [phase, diagnosticOnly]);
   useEffect(() => {
     const change = () => {
       epoch.current++;
       clearFeedback(true);
+      wake.current?.();
     };
     document.addEventListener('visibilitychange', change);
     return () => document.removeEventListener('visibilitychange', change);
   }, []);
 
   useEffect(() => {
-    const session = ++generation.current;
     setBackend('—');
     setWorkerError('');
     setLastCommand(null);
+    setPerformanceSample(null);
     clearFeedback();
     if (!enabled || !cameraReady || !stream) {
       setStatus(enabled ? 'unavailable' : 'off');
       setError(enabled ? 'Aguarde a câmera ficar pronta para usar a IA.' : '');
       return;
     }
-    let disposed = false;
+
     let worker: Worker | null = null;
-    let fallback: GestureRecognizer | null = null;
-    let fallbackStarted = false;
-    let active = false;
-    let modeGeneration = 0;
-    let period = 1000 / config.maximumInferenceHz;
-    let lastInference = -Infinity;
+    let hasFinished = false;
+    let loaded = false;
+    let firstFrame = true;
+    let acceptablePeriod = 1000 / config.maximumInferenceHz;
+    let smoothedCost: number | undefined;
+    let nextSampleAt = -Infinity;
     let lastFrame = -1;
     let sequence = 0;
+    let deadline: number | undefined;
+    let cancelScheduled: (() => void) | undefined;
+    let startupMs: number | undefined;
     type Ticket = {
       id: number;
       epoch: number;
       phase: GesturePhase;
       video: HTMLVideoElement;
-      mode: number;
       timestamp: number;
+      started?: boolean;
     };
     let pending: Ticket | null = null;
-    let deadline: number | undefined;
     const live = () =>
-      !disposed &&
-      generation.current === session &&
+      !hasFinished &&
       latest.current.enabled &&
       latest.current.cameraReady &&
       latest.current.stream === stream;
-    const valid = (ticket: Ticket) =>
+    const canSample = () =>
       live() &&
+      loaded &&
+      !document.hidden &&
+      (latest.current.diagnosticOnly ||
+        ['idle', 'countdown', 'review'].includes(latest.current.phase));
+    const valid = (ticket: Ticket) =>
+      canSample() &&
       pending === ticket &&
-      ticket.mode === modeGeneration &&
       ticket.epoch === epoch.current &&
       ticket.phase === latest.current.phase &&
-      ticket.video === videoRef.current &&
-      !document.hidden;
+      ticket.video === videoRef.current;
+
     const clearDeadline = () => window.clearTimeout(deadline);
-    let frames = 0,
-      totalMs = 0,
-      firstTime = 0,
-      previousTime = 0;
-    const apply = (ticket: Ticket, detection: GestureDetection) => {
-      if (!valid(ticket)) return;
-      const voted = vote.current.accept(detection, ticket.timestamp);
-      const result = validator.current.update(voted, ticket.phase, ticket.timestamp, period, true);
-      if (latest.current.debug) {
-        if (frames === 0) firstTime = ticket.timestamp;
-        frames++;
-        totalMs += performance.now() - ticket.timestamp;
-        setSample({
-          detection,
-          interval: frames > 1 ? ticket.timestamp - previousTime : 0,
-          hz: frames > 1 ? ((frames - 1) * 1000) / (ticket.timestamp - firstTime) : 0,
-          ms: totalMs / frames,
-          reason: latest.current.diagnosticOnly
-            ? 'Observação sem comandos: ' + result.reason
-            : result.reason,
-          stable: Math.round(result.progress * confirmationDuration(result.gesture)),
-          validated: voted ? result.gesture : null,
-        });
-        previousTime = ticket.timestamp;
-      } else {
-        frames = 0;
-        totalMs = 0;
-      }
-      setGesture(result.gesture);
-      setProgress(result.progress);
-      if (result.command && !latest.current.diagnosticOnly) {
-        setLastCommand(result.command);
-        setConfirmed(result.gesture);
-        latest.current.onCommand(result.command);
-      }
-    };
-    const fail = () => {
-      if (!live()) return;
-      active = false;
-      clearFeedback();
-      setStatus('unavailable');
-      setError('Não foi possível carregar ou processar a IA. Use os controles manuais.');
-    };
-    const useFallback = async (cause: unknown) => {
-      if (!live() || fallbackStarted) return;
-      fallbackStarted = true;
-      setWorkerError(cause instanceof Error ? cause.message : String(cause));
-      frames = 0;
-      totalMs = 0;
-      active = false;
-      modeGeneration++;
-      worker?.terminate();
-      worker = null;
+    const stop = () => {
+      hasFinished = true;
       pending = null;
       clearDeadline();
-      clearFeedback(true);
-      period = 1000 / Math.min(config.fallbackInferenceHz, config.maximumInferenceHz);
-      lastInference = -Infinity;
-      lastFrame = -1;
-      setStatus('loading');
-      try {
-        const { createGestureRecognizer } = await import('../services/gestureRecognizer');
-        if (!live()) return;
-        const recognizer = await createGestureRecognizer(
-          `${root}mediapipe/wasm`,
-          `${root}models/gesture_recognizer.task`,
-        );
-        if (!live()) {
-          recognizer.close();
-          return;
-        }
-        fallback = recognizer;
-        setBackend('CPU na thread principal');
-        active = true;
-        setStatus('active');
-        setError('Worker indisponível. IA operando com frequência reduzida.');
-      } catch {
-        fail();
-      }
+      cancelScheduled?.();
+      cancelScheduled = undefined;
+      wake.current = null;
+      worker?.terminate();
+      worker = null;
     };
+    let count = 0;
+    let firstAt = 0;
+    let totalInference = 0;
+    let maxInference = 0;
+    let totalPreparation = 0;
+    let prepared = 0;
+    let lastPublish = -Infinity;
+    const publish = (now: number) => {
+      lastPublish = now;
+      setPerformanceSample({
+        hz: count > 1 && now > firstAt ? ((count - 1) * 1000) / (now - firstAt) : 0,
+        meanInference: count ? totalInference / count : null,
+        maxInference: count ? maxInference : null,
+        meanPreparation: prepared ? totalPreparation / prepared : null,
+        startupMs,
+      });
+    };
+    const fail = (cause: unknown, timeout = false) => {
+      if (!live()) return;
+      stop();
+      setWorkerError(cause instanceof Error ? cause.message : String(cause));
+      setIncidents((current) => ({
+        timeouts: current.timeouts + Number(timeout),
+        failures: current.failures + Number(!timeout),
+      }));
+      if (latest.current.debug) publish(performance.now());
+      clearFeedback(true);
+      setBackend('—');
+      setStatus('unavailable');
+      setError('Reconhecimento suspenso. Use os controles manuais ou tente ativar a IA novamente.');
+    };
+
+    const schedule = () => {
+      const video = videoRef.current;
+      if (!video || !canSample() || pending || cancelScheduled) return;
+      const delay = nextSampleAt - performance.now();
+      const frameCallbacks =
+        typeof video.requestVideoFrameCallback === 'function' &&
+        typeof video.cancelVideoFrameCallback === 'function';
+      if (delay > 0 || !frameCallbacks) {
+        const timer = window.setTimeout(
+          () => {
+            cancelScheduled = undefined;
+            if (frameCallbacks) schedule();
+            else void capture(video, video.currentTime);
+          },
+          delay > 0 ? Math.ceil(delay) : 50,
+        );
+        cancelScheduled = () => window.clearTimeout(timer);
+        return;
+      }
+      const callback = video.requestVideoFrameCallback((_now, { mediaTime }) => {
+        cancelScheduled = undefined;
+        void capture(video, mediaTime);
+      });
+      cancelScheduled = () => video.cancelVideoFrameCallback(callback);
+    };
+    wake.current = () => {
+      cancelScheduled?.();
+      cancelScheduled = undefined;
+      if (latest.current.debug && loaded) publish(performance.now());
+      schedule();
+    };
+
+    async function capture(video: HTMLVideoElement, frameTime: number) {
+      if (!canSample() || pending) return;
+      if (
+        video !== videoRef.current ||
+        video.readyState < 2 ||
+        !video.videoWidth ||
+        !video.videoHeight ||
+        frameTime === lastFrame
+      ) {
+        schedule();
+        return;
+      }
+      const timestamp = performance.now();
+      const ticket: Ticket = {
+        id: ++sequence,
+        epoch: epoch.current,
+        phase: latest.current.phase,
+        video,
+        timestamp,
+      };
+      pending = ticket;
+      nextSampleAt = timestamp + acceptablePeriod;
+      lastFrame = frameTime;
+      let frame: ImageBitmap | undefined;
+      let transferred = false;
+      deadline = window.setTimeout(
+        () => fail('Tempo limite na preparação do quadro', true),
+        config.workerInferenceTimeoutMs,
+      );
+      try {
+        const width = Math.min(video.videoWidth, config.maximumInputWidth);
+        frame = await createImageBitmap(video, {
+          resizeWidth: width,
+          resizeHeight: Math.max(1, Math.round((video.videoHeight * width) / video.videoWidth)),
+          resizeQuality: 'low',
+        });
+        if (!worker || !valid(ticket)) return;
+        clearDeadline();
+        totalPreparation += performance.now() - timestamp;
+        prepared++;
+        worker.postMessage(
+          {
+            type: 'frame',
+            frame,
+            overlay: latest.current.debug && latest.current.overlay,
+            timestamp,
+            id: ticket.id,
+          },
+          [frame],
+        );
+        transferred = true;
+        deadline = window.setTimeout(
+          () => {
+            const stage = ticket.started
+              ? 'inferência ou entrega do resultado'
+              : 'entrega ao worker';
+            const warmup = firstFrame ? ' no primeiro quadro' : '';
+            fail(`Tempo limite de ${stage}${warmup}`, true);
+          },
+          firstFrame ? config.workerFirstFrameTimeoutMs : config.workerInferenceTimeoutMs,
+        );
+      } catch (cause) {
+        if (valid(ticket)) fail(cause);
+      } finally {
+        if (!transferred) {
+          frame?.close();
+          if (pending === ticket) {
+            clearDeadline();
+            pending = null;
+            schedule();
+          }
+        }
+      }
+    }
+
     setStatus('loading');
     setError('');
     try {
@@ -225,118 +307,102 @@ export function useGestureRecognition(
       );
       worker = instance;
       deadline = window.setTimeout(
-        () => void useFallback('Tempo limite de inicialização'),
+        () => fail('Tempo limite de inicialização do worker', true),
         config.workerInitializationTimeoutMs,
       );
       instance.onmessage = (event: MessageEvent<GestureWorkerResponse>) => {
         if (!live() || worker !== instance) return;
         const message = event.data;
-        if (message.type === 'ready' && !active) {
-          setBackend('Worker');
+        if (message.type === 'error') {
+          fail(message.message);
+        } else if (message.type === 'ready' && !loaded) {
           clearDeadline();
-          active = true;
-          setStatus('active');
+          loaded = true;
+          startupMs = message.startupMs;
+          setBackend('Worker · CPU/WASM');
+          if (latest.current.debug) publish(performance.now());
+          schedule();
+        } else if (message.type === 'started' && pending?.id === message.id) {
+          pending.started = true;
         } else if (message.type === 'result' && pending?.id === message.id) {
-          const ticket = pending;
           clearDeadline();
-          apply(ticket, message.detection);
+          const ticket = pending;
+          const now = performance.now();
+          const cost = now - ticket.timestamp;
+          if (count === 0) firstAt = now;
+          count++;
+          totalInference += message.inferenceMs;
+          maxInference = Math.max(maxInference, message.inferenceMs);
+          if (latest.current.debug && now - lastPublish >= config.diagnosticsIntervalMs)
+            publish(now);
+          const warming = firstFrame;
+          if (warming) {
+            firstFrame = false;
+            setStatus('active');
+            // The first live frame warms the graph before it can authorize a gesture.
+          } else if (valid(ticket) && cost > config.maximumSampleGapMs) {
+            clearFeedback(true);
+          } else if (valid(ticket)) {
+            const voted = vote.accept(message.detection, ticket.timestamp);
+            const result = validator.update(
+              voted,
+              ticket.phase,
+              ticket.timestamp,
+              acceptablePeriod,
+              true,
+            );
+            const showDetails =
+              latest.current.debug && (now === lastPublish || latest.current.overlay);
+            if (showDetails) {
+              setSample({
+                detection: message.detection,
+                reason: latest.current.diagnosticOnly
+                  ? 'Observação sem comandos: ' + result.reason
+                  : result.reason,
+                stable: Math.round(result.progress * confirmationDuration(result.gesture)),
+                validated: voted ? result.gesture : null,
+              });
+            }
+            setGesture(result.gesture);
+            setProgress(result.progress);
+            if (result.command && !latest.current.diagnosticOnly) {
+              setLastCommand(result.command);
+              setConfirmed(result.gesture);
+              latest.current.onCommand(result.command);
+            }
+          }
+
+          // Small inputs and one outstanding frame bound the memory use. Reduce duty cycle under load.
+          if (!warming) {
+            smoothedCost = smoothedCost === undefined ? cost : smoothedCost * 0.75 + cost * 0.25;
+            acceptablePeriod = Math.min(
+              config.maximumSamplingPeriodMs,
+              Math.max(1000 / config.maximumInferenceHz, smoothedCost * 2),
+            );
+            // Leave time for the preview even when one inference exceeds the sampling interval.
+            const rest = Math.min(config.maximumSamplingPeriodMs, cost / 2);
+            nextSampleAt = Math.max(ticket.timestamp + acceptablePeriod, now + rest);
+          }
           pending = null;
-        } else if (message.type === 'error') void useFallback(message.message);
+          schedule();
+        }
       };
-      instance.onerror = (event) => {
-        if (worker === instance) void useFallback(event?.message || 'Erro do worker');
-      };
+      instance.onerror = (event) => fail(event?.message || 'Erro do worker');
+      instance.onmessageerror = () => fail('Falha ao receber uma mensagem do worker');
       instance.postMessage({
         type: 'init',
         wasmRoot: new URL(`${root}mediapipe/wasm`, document.baseURI).href,
         modelUrl: new URL(`${root}models/gesture_recognizer.task`, document.baseURI).href,
       });
     } catch (cause) {
-      void useFallback(cause);
+      fail(cause);
     }
+    return stop;
+  }, [enabled, cameraReady, stream, videoRef, retryVersion]);
 
-    const timer = window.setInterval(async () => {
-      const video = videoRef.current;
-      if (
-        !live() ||
-        !active ||
-        pending ||
-        document.hidden ||
-        (!latest.current.diagnosticOnly &&
-          !['idle', 'countdown', 'review'].includes(latest.current.phase)) ||
-        !video ||
-        video.readyState < 2 ||
-        !video.videoWidth ||
-        !video.videoHeight ||
-        video.currentTime === lastFrame
-      )
-        return;
-      const now = performance.now();
-      if (now - lastInference < period) return;
-      const ticket: Ticket = {
-        id: ++sequence,
-        epoch: epoch.current,
-        phase: latest.current.phase,
-        video,
-        mode: modeGeneration,
-        timestamp: now,
-      };
-      pending = ticket;
-      lastInference = now;
-      lastFrame = video.currentTime;
-      let frame: ImageBitmap | null = null;
-      try {
-        const width = Math.min(video.videoWidth, config.maximumInputWidth);
-        frame = await createImageBitmap(video, {
-          resizeWidth: width,
-          resizeHeight: Math.max(1, Math.round((video.videoHeight * width) / video.videoWidth)),
-          resizeQuality: 'low',
-        });
-        if (!valid(ticket)) return;
-        if (worker) {
-          worker.postMessage(
-            {
-              type: 'frame',
-              frame,
-              overlay: latest.current.debug && latest.current.overlay,
-              timestamp: now,
-              id: ticket.id,
-            },
-            [frame],
-          );
-          frame = null; // Ownership transferred to the worker, which closes it in finally.
-          deadline = window.setTimeout(
-            () => void useFallback('Tempo limite de inferência'),
-            config.workerInferenceTimeoutMs,
-          );
-          return;
-        }
-        const { detectGesture } = await import('../services/gestureRecognizer');
-        if (!valid(ticket) || !fallback) return;
-        apply(
-          ticket,
-          detectGesture(fallback, frame, now, latest.current.debug && latest.current.overlay),
-        );
-      } catch (cause) {
-        if (valid(ticket)) {
-          if (worker) void useFallback(cause);
-          else fail();
-        }
-      } finally {
-        frame?.close();
-        if (pending === ticket && (!worker || frame)) pending = null;
-      }
-    }, 50);
-    return () => {
-      disposed = true;
-      modeGeneration++;
-      pending = null;
-      window.clearInterval(timer);
-      clearDeadline();
-      worker?.terminate();
-      fallback?.close();
-    };
-  }, [enabled, cameraReady, stream, videoRef]);
+  useEffect(() => {
+    if (debug) wake.current?.();
+  }, [debug]);
   return {
     enabled,
     setEnabled,
@@ -354,6 +420,9 @@ export function useGestureRecognition(
     sample,
     backend,
     workerError,
+    performanceSample,
+    incidents,
+    retry: () => setRetryVersion((current) => current + 1),
     lastCommand,
   };
 }

@@ -155,3 +155,13 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Arte oficial:** `src/assets/frames/feira-das-profissoes.png` recebeu uma cópia byte a byte do arquivo fornecido. Confirmados 1920 × 1080, proporção 16:9 e alfa zero em todos os 10.000 pixels da amostra central.
 - **Validação no navegador:** Chrome em modo headless compôs o PNG oficial sobre um JPEG sintético de 1920 × 1080. A leitura do JPEG final confirmou a cor da foto no centro e a arte incorporada na borda.
 - **Pendências:** testar com as câmeras do evento e aprovar a revisão. A Etapa 07 depende de autorização.
+
+## 20/11/2026 — Correção de desempenho da IA na cabine
+
+- **Status:** correção em `fix/gesture-worker-performance`, baseada na Etapa 06 com a moldura oficial. O PR #11 ainda está aberto e a validação física continua pendente.
+- **Diagnóstico:** com DroidCam, a interface relatou timeout de 3 s seguido de inferência síncrona na thread principal. A prévia voltou a ficar fluida ao desligar a IA. A causa específica do atraso no worker do evento ainda precisa de medição.
+- **Alterações:** worker exclusivo com retomada manual após falha, aquecimento do primeiro quadro, amostragem adaptativa sem fila e separação entre preparação, inferência e FPS de prévia. Mantidos os tempos, modelo e critérios dos quatro gestos. A resolução da fotografia e a composição da moldura continuam no fluxo da Etapa 06.
+- **Arquivos:** hook, worker, serviço, configuração e protocolo de gestos, componentes de diagnóstico, guia, câmera e cabine, testes de worker e captura e [documentação de reconhecimento](RECONHECIMENTO_GESTOS.md). Nenhuma dependência adicionada.
+- **Testes automatizados:** 81 passaram com `npm run test -- --maxWorkers=1 --pool=threads`, incluindo prazos, descarte, pausa adaptativa, retomada, limpeza, botões manuais e os quatro comandos de gesto.
+- **Verificações:** lint, typecheck, build e formatação aprovados. O PNG no build manteve o SHA-256 original. Em Chrome headless com a imagem pública de polegar, o worker do build levou 892 ms na primeira inferência e 291–366 ms nas seguintes. A preparação levou 3–10 ms. Este ensaio não mede FPS do DroidCam.
+- **Pendências:** medir com webcam e DroidCam, comparar fluidez com IA ligada e desligada e validar gestos, botões e revisão da foto. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.

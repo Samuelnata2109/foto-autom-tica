@@ -2,12 +2,8 @@ import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision';
 import { handGeometry, supportsThumb, thumbMetrics } from './handGeometry';
 import type { GestureDetection } from '../types/gesture';
 
-export async function createGestureRecognizer(
-  wasmRoot: string,
-  modelUrl: string,
-  moduleWorker = false,
-) {
-  const files = await FilesetResolver.forVisionTasks(wasmRoot, moduleWorker);
+export async function createGestureRecognizer(wasmRoot: string, modelUrl: string) {
+  const files = await FilesetResolver.forVisionTasks(wasmRoot, true);
   return GestureRecognizer.createFromOptions(files, {
     baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
     runningMode: 'VIDEO',

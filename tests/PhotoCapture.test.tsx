@@ -207,6 +207,17 @@ describe('Sistema fotográfico', () => {
     expect(host.querySelector('.countdown')).toBeNull();
   });
 
+  it('captura e confirma pelo botão mesmo quando o worker não pode ser criado', async () => {
+    vi.stubGlobal('Worker', undefined);
+    await open();
+    await press('.gesture-toggle input');
+    expect(get('.gesture-status').textContent).toContain('IA indisponível');
+    await press('.shutter');
+    await advance(5000);
+    await press('.photo-review button:last-child');
+    expect(get('.photo-review [role=status]').textContent).toContain('Foto confirmada');
+  });
+
   it('não usa o quadro se o stream trocar antes do disparo', async () => {
     const video = await open();
     await press('.shutter');

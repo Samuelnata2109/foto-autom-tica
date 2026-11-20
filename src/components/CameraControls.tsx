@@ -61,7 +61,9 @@ export function CameraControls({
         <span className="camera-controls__quality">
           {width && height ? width + ' × ' + height : 'Resolução não informada'}
           {frameRate
-            ? ' · ' + frameRate.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' FPS'
+            ? ' · ' +
+              frameRate.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) +
+              ' FPS informados'
             : ''}
         </span>
       )}

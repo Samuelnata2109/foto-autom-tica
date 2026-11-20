@@ -2,6 +2,7 @@ import { Hand, ThumbsUp } from 'lucide-react';
 import { gestureLabels } from '../services/gestureValidation';
 import { gestureConfig } from '../config/gestureConfig';
 import type { GestureName, GesturePhase } from '../types/gesture';
+import { Button } from './Button';
 
 function Peace() {
   return (
@@ -51,6 +52,8 @@ type Recognition = {
   setEnabled: (enabled: boolean) => void;
   status: 'off' | 'loading' | 'active' | 'unavailable';
   error: string;
+  workerError: string;
+  retry: () => void;
   gesture: GestureName | null;
   progress: number;
   confirmed: GestureName | null;
@@ -89,6 +92,11 @@ export function GestureGuide({
         {recognition.status === 'unavailable' && 'IA indisponível'}
       </p>
       {recognition.error && <p role="alert">{recognition.error}</p>}
+      {recognition.status === 'unavailable' && recognition.workerError && (
+        <Button variant="secondary" onClick={recognition.retry}>
+          Tentar reativar IA
+        </Button>
+      )}
       {recognition.status === 'active' && (
         <>
           <p>{guidance[phase]}</p>

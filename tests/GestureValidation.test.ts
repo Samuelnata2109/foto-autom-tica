@@ -67,13 +67,52 @@ describe('validação de gestos', () => {
   it('cancela e confirma apenas nos estados corretos', () => {
     const validation = new GestureValidation();
     validation.update(fist, 'countdown', 0);
-    for (let time = 100; time < 2000; time += 100) validation.update(fist, 'countdown', time);
-    expect(validation.update(fist, 'countdown', 2000).command).toBe('cancel');
+    for (let time = 100; time < 800; time += 100) validation.update(fist, 'countdown', time);
+    expect(validation.update(fist, 'countdown', 800).command).toBe('cancel');
     validation.update(null, 'review', 2300);
     validation.update(thumb, 'review', 2400);
     for (let time = 2500; time < 4400; time += 100) validation.update(thumb, 'review', time);
     expect(validation.update(thumb, 'review', 4400).command).toBe('confirm');
   });
+});
+
+it('cancela com 800 ms mesmo durante o cooldown da captura, sem repetir', () => {
+  const v = new GestureValidation();
+  for (let t = 0; t < 2000; t += 100) v.update(palm, 'idle', t);
+  expect(v.update(palm, 'idle', 2000).command).toBe('start5');
+  for (let t = 2100; t < 2900; t += 100) expect(v.update(fist, 'countdown', t).command).toBeNull();
+  expect(v.update(fist, 'countdown', 2900).command).toBe('cancel');
+  for (let t = 3000; t <= 5000; t += 100) expect(v.update(fist, 'countdown', t).command).toBeNull();
+});
+
+it.each([
+  [fist, 'countdown', 'cancel'],
+  [thumb, 'review', 'confirm'],
+  [palm, 'idle', 'start5'],
+  [victory, 'idle', 'start10'],
+] as const)(
+  'confirma $0.name com frequência real de aproximadamente 2,4 Hz',
+  (d, phase, command) => {
+    const v = new GestureValidation();
+    const commands = [];
+    let now = 0;
+    for (const interval of [0, 417, 430, 390, 450, 410, 420, 400, 440]) {
+      now += interval;
+      const result = v.update(d, phase, now, 200, true);
+      if (result.command) commands.push(result.command);
+    }
+    expect(commands).toEqual([command]);
+  },
+);
+
+it('não conta perda de detecção ou pausas prolongadas na frequência reduzida', () => {
+  const v = new GestureValidation();
+  v.update(fist, 'countdown', 0, 200, true);
+  v.update(fist, 'countdown', 417, 200, true);
+  v.update(null, 'countdown', 834, 200, true);
+  expect(v.update(fist, 'countdown', 1251, 200, true).progress).toBe(0);
+  v.update(fist, 'countdown', 1668, 200, true);
+  expect(v.update(fist, 'countdown', 3000, 200, true).progress).toBe(0);
 });
 
 it.each([100, 200])('confirma com amostras de %i ms e rejeita interrupções longas', (period) => {

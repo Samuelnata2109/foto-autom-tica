@@ -2,7 +2,7 @@
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 import { gestureConfig as config } from '../config/gestureConfig';
 import { GestureVote } from '../services/gestureVote';
-import { GestureValidation } from '../services/gestureValidation';
+import { confirmationDuration, GestureValidation } from '../services/gestureValidation';
 import type {
   GestureCommand,
   GestureDetection,
@@ -154,7 +154,7 @@ export function useGestureRecognition(
           reason: latest.current.diagnosticOnly
             ? 'Observação sem comandos: ' + result.reason
             : result.reason,
-          stable: Math.round(result.progress * config.confirmationMs),
+          stable: Math.round(result.progress * confirmationDuration(result.gesture)),
           validated: voted ? result.gesture : null,
         });
         previousTime = ticket.timestamp;

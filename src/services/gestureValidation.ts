@@ -30,6 +30,9 @@ export function commandFor(phase: GesturePhase, gesture: GestureName): GestureCo
   return commands[phase]?.[gesture] ?? null;
 }
 
+export const confirmationDuration = (gesture: GestureName | null) =>
+  gesture === 'Closed_Fist' ? gestureConfig.cancelConfirmationMs : gestureConfig.confirmationMs;
+
 export class GestureValidation {
   private candidate: GestureName | null = null;
   private lastSeenAt = 0;
@@ -38,12 +41,16 @@ export class GestureValidation {
   private latch: GestureName | null = null;
   private lastCommandAt = -Infinity;
   private phase: GesturePhase = 'idle';
+  private lastSampleAt: number | null = null;
+  private observedPeriod: number | null = null;
 
   reset(keepLatch = false) {
     this.candidate = null;
     this.lastSeenAt = 0;
     this.heldMs = 0;
     this.missing = false;
+    this.lastSampleAt = null;
+    this.observedPeriod = null;
     if (!keepLatch) this.latch = null;
   }
 
@@ -59,18 +66,32 @@ export class GestureValidation {
       this.reset(true);
     }
     const gesture = recognizedGesture(detection);
+    // Measure delivered samples, including misses; never learn a prolonged interruption.
+    if (smooth && this.lastSampleAt !== null) {
+      const interval = now - this.lastSampleAt;
+      if (interval > 0 && interval <= gestureConfig.maximumSampleGapMs)
+        this.observedPeriod =
+          this.observedPeriod === null ? interval : (this.observedPeriod + interval) / 2;
+    }
+    this.lastSampleAt = now;
+    if (smooth) samplePeriodMs = Math.max(samplePeriodMs, this.observedPeriod ?? samplePeriodMs);
     const gap = now - this.lastSeenAt;
     const tolerance = gestureConfig.detectionGraceMs + (smooth ? samplePeriodMs : 0);
     const interrupted =
+      gap > gestureConfig.maximumSampleGapMs ||
       gap >
-      samplePeriodMs + gestureConfig.sampleJitterMs + (smooth && this.missing ? samplePeriodMs : 0);
+        samplePeriodMs +
+          gestureConfig.sampleJitterMs +
+          (smooth && this.missing ? samplePeriodMs : 0);
     if (!gesture) {
       if ((this.candidate || this.latch) && gap > tolerance) this.reset();
       else this.missing = true;
       return {
         reason: this.candidate ? 'Amostra incerta; tempo pausado' : 'Sem detecção estável',
         gesture: this.candidate,
-        progress: this.candidate ? Math.min(1, this.heldMs / gestureConfig.confirmationMs) : 0,
+        progress: this.candidate
+          ? Math.min(1, this.heldMs / confirmationDuration(this.candidate))
+          : 0,
         command: null,
       };
     }
@@ -84,13 +105,13 @@ export class GestureValidation {
     }
     this.lastSeenAt = now;
     this.missing = false;
-    const progress = Math.min(1, this.heldMs / gestureConfig.confirmationMs);
+    const progress = Math.min(1, this.heldMs / confirmationDuration(gesture));
     const allowed = commandFor(phase, gesture);
     const command =
       progress >= 1 &&
       allowed &&
       this.latch !== gesture &&
-      now - this.lastCommandAt >= gestureConfig.commandCooldownMs
+      (allowed === 'cancel' || now - this.lastCommandAt >= gestureConfig.commandCooldownMs)
         ? allowed
         : null;
     if (command) {

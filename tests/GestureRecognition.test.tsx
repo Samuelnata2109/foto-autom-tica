@@ -87,6 +87,18 @@ afterEach(async () => {
 });
 
 describe('ciclo de reconhecimento', () => {
+  it('aceita aquecimento de 38,2 segundos sem acionar fallback antes de 60 segundos', async () => {
+    await act(async () => root.render(<Harness />));
+    await act(async () => host.querySelector('button')!.click());
+    const worker = FakeWorker.instances[0]!;
+    await act(async () => vi.advanceTimersByTimeAsync(38200));
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(host.textContent).toContain('loading');
+    await act(async () => worker.reply({ type: 'ready' }));
+    await act(async () => vi.advanceTimersByTimeAsync(30000));
+    expect(host.textContent).toContain('active');
+    expect(worker.terminate).not.toHaveBeenCalled();
+  });
   it('inicializa uma vez, limita a um quadro pendente e encerra ao desativar', async () => {
     await act(async () => root.render(<Harness />));
     const video = host.querySelector('video')!;
@@ -256,20 +268,29 @@ it('fecha bitmap pendente da sessão anterior após desativar e reativar', async
   expect(FakeWorker.instances).toHaveLength(2);
 });
 
-it.each([false, true])('controla o envio do comando conforme observação %s', async (observe) => {
-  const { worker, video } = await readyWorker();
-  if (observe) await act(async () => host.querySelectorAll('button')[1]!.click());
-  for (let i = 0; i <= 22; i++) {
-    video.currentTime += 1;
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(100);
-    });
-    const message = worker.messages.at(-1);
-    if (message?.type !== 'frame') throw Error('Quadro esperado');
-    await act(async () =>
-      worker.reply({ type: 'result', id: message.id, detection: { name: 'Victory', score: 0.92 } }),
-    );
-  }
-  if (observe) expect(onCommand).not.toHaveBeenCalled();
-  else expect(onCommand.mock.calls).toEqual([['start10']]);
-});
+it.each([
+  [false, 'Victory', 'idle', 'start10'],
+  [true, 'Victory', 'idle', 'start10'],
+  [false, 'Closed_Fist', 'countdown', 'cancel'],
+  [false, 'Thumb_Up', 'review', 'confirm'],
+] as const)(
+  'controla envio: observação %s, gesto %s, fase %s',
+  async (observe, name, phase, command) => {
+    const { worker, video } = await readyWorker();
+    await act(async () => root.render(<Harness phase={phase} />));
+    if (observe) await act(async () => host.querySelectorAll('button')[1]!.click());
+    for (let i = 0; i <= 22; i++) {
+      video.currentTime += 1;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      const message = worker.messages.at(-1);
+      if (message?.type !== 'frame') throw Error('Quadro esperado');
+      await act(async () =>
+        worker.reply({ type: 'result', id: message.id, detection: { name, score: 0.92 } }),
+      );
+    }
+    if (observe) expect(onCommand).not.toHaveBeenCalled();
+    else expect(onCommand.mock.calls).toEqual([[command]]);
+  },
+);

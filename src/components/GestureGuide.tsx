@@ -1,5 +1,6 @@
 import { Hand, ThumbsUp } from 'lucide-react';
 import { gestureLabels } from '../services/gestureValidation';
+import { gestureConfig } from '../config/gestureConfig';
 import type { GestureName, GesturePhase } from '../types/gesture';
 
 function Peace() {
@@ -57,7 +58,7 @@ type Recognition = {
 
 const guidance: Record<GesturePhase, string> = {
   idle: 'Mostre a palma aberta ou o sinal de paz por 2 segundos.',
-  countdown: 'Mostre o punho fechado por 2 segundos para cancelar.',
+  countdown: `Mantenha o punho fechado por ${(gestureConfig.cancelConfirmationMs / 1000).toLocaleString('pt-BR')} segundo para cancelar.`,
   capturing: 'Aguarde a captura.',
   review: 'Mostre o polegar para cima por 2 segundos para confirmar.',
   confirmed: 'Foto confirmada. Use os controles manuais para repetir.',

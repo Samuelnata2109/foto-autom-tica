@@ -1,5 +1,5 @@
 import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision';
-import { handGeometry } from './handGeometry';
+import { handGeometry, supportsThumb, thumbMetrics } from './handGeometry';
 import type { GestureDetection } from '../types/gesture';
 
 export async function createGestureRecognizer(
@@ -26,7 +26,10 @@ export function detectGesture(
   if (!category && !result.landmarks[0]) return null;
   const raw = category?.categoryName ?? 'None',
     rawScore = category?.score ?? 0;
-  const geometry = handGeometry(result.worldLandmarks[0] ?? []);
+  const landmarks = result.worldLandmarks[0] ?? [];
+  const metrics = raw === 'Thumb_Up' ? thumbMetrics(landmarks) : null;
+  const geometry =
+    raw === 'Thumb_Up' && supportsThumb(metrics) ? 'Thumb_Up' : handGeometry(landmarks);
   const agreement = geometry === raw;
   const conflict = geometry !== null && !agreement;
   return {
@@ -35,6 +38,7 @@ export function detectGesture(
     raw,
     rawScore,
     geometry,
+    thumbMetrics: metrics,
     points: overlay ? result.landmarks[0] : undefined,
   };
 }

@@ -41,6 +41,13 @@ export function GestureDiagnostics({
           <p>
             Validado: {s?.validated ?? '—'} · estabilidade {s?.stable ?? 0} ms
           </p>
+          {d?.thumbMetrics && (
+            <p>
+              Polegar: extensão {d.thumbMetrics.straightRatio.toFixed(2)} · afastamento da palma{' '}
+              {d.thumbMetrics.outwardRatio.toFixed(2)} · dedos flexionados{' '}
+              {d.thumbMetrics.foldedFingers}/4
+            </p>
+          )}
           <p>
             {s?.hz.toFixed(1) ?? '—'} Hz · média por quadro {s?.ms.toFixed(1) ?? '—'} ms
           </p>

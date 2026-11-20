@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from 'vitest';
-import { handGeometry } from '../src/services/handGeometry';
+import { handGeometry, supportsThumb, thumbMetrics } from '../src/services/handGeometry';
 import { GestureVote } from '../src/services/gestureVote';
 import { GestureValidation } from '../src/services/gestureValidation';
 import { detectGesture } from '../src/services/gestureRecognizer';
@@ -30,6 +30,32 @@ function infer(name: string, score: number, pose: GestureName) {
   return detectGesture(model, {} as ImageBitmap, 100);
 }
 describe('reconhecimento híbrido', () => {
+  it('apoia polegar curto estendido sem exigir distância fixa à largura da palma', () => {
+    const points = hand('Thumb_Up');
+    points[2] = { x: -1.5, y: 2, z: 0 };
+    points[3] = { x: -2, y: 2.5, z: 0 };
+    points[4] = { x: -2.5, y: 3, z: 0 };
+    expect(handGeometry(points)).toBe('Closed_Fist');
+    const model = {
+      recognizeForVideo: () => ({
+        gestures: [[{ categoryName: 'Thumb_Up', score: 0.7 }]],
+        landmarks: [points],
+        worldLandmarks: [points],
+      }),
+    } as unknown as GestureRecognizer;
+    const detection = detectGesture(model, {} as ImageBitmap, 0);
+    expect(detection?.geometry).toBe('Thumb_Up');
+    expect(new GestureVote().accept(detection, 0)?.name).toBe('Thumb_Up');
+    expect(
+      supportsThumb(thumbMetrics(points.map((p) => ({ x: -p.y * 2, y: p.z * 2, z: p.x * 2 })))),
+    ).toBe(true);
+  });
+  it('não apoia polegar recolhido, dedos abertos ou pontos inválidos', () => {
+    expect(supportsThumb(thumbMetrics(hand('Closed_Fist')))).toBe(false);
+    expect(supportsThumb(thumbMetrics(hand('Open_Palm')))).toBe(false);
+    expect(supportsThumb(thumbMetrics([]))).toBe(false);
+    expect(infer('Thumb_Up', 0.95, 'Open_Palm')?.name).toBe('None');
+  });
   it.each(['Open_Palm', 'Victory', 'Closed_Fist', 'Thumb_Up'] as const)(
     'classifica %s com rotação, escala e reflexão',
     (name) => {

@@ -75,3 +75,29 @@ describe('validação de gestos', () => {
     expect(validation.update(thumb, 'review', 4400).command).toBe('confirm');
   });
 });
+
+it.each([100, 200])('confirma com amostras de %i ms e rejeita interrupções longas', (period) => {
+  const validation = new GestureValidation();
+  let result = validation.update(palm, 'idle', 0, period);
+  for (let now = period; now <= 2000; now += period)
+    result = validation.update(palm, 'idle', now, period);
+  expect(result.command).toBe('start5');
+  validation.reset();
+  validation.update(palm, 'idle', 0, period);
+  expect(validation.update(palm, 'idle', 2000, period).progress).toBe(0);
+});
+
+it('aceita variação de amostragem sem contar ausência de detecção', () => {
+  const validation = new GestureValidation();
+  let now = 0;
+  validation.update(palm, 'idle', now, 200);
+  for (const delta of [210, 230, 195, 240, 205, 220, 210, 200, 210, 220]) {
+    now += delta;
+    const result = validation.update(palm, 'idle', now, 200);
+    if (now >= 2000) expect(result.command).toBe('start5');
+  }
+  validation.reset();
+  validation.update(palm, 'idle', 0, 200);
+  validation.update(null, 'idle', 200, 200);
+  expect(validation.update(palm, 'idle', 400, 200).progress).toBe(0);
+});

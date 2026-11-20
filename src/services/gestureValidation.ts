@@ -44,7 +44,7 @@ export class GestureValidation {
     if (!keepLatch) this.latch = null;
   }
 
-  update(detection: GestureDetection, phase: GesturePhase, now: number) {
+  update(detection: GestureDetection, phase: GesturePhase, now: number, samplePeriodMs = 100) {
     if (phase !== this.phase) {
       this.phase = phase;
       this.reset(true);
@@ -61,7 +61,10 @@ export class GestureValidation {
       };
     }
     if (this.latch && gesture !== this.latch) this.latch = null;
-    if (this.candidate !== gesture || now - this.lastSeenAt > gestureConfig.detectionGraceMs) {
+    if (
+      this.candidate !== gesture ||
+      now - this.lastSeenAt > samplePeriodMs + gestureConfig.sampleJitterMs
+    ) {
       this.candidate = gesture;
       this.heldMs = 0;
     } else {

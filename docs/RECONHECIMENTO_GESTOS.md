@@ -28,3 +28,9 @@ Com webcam integrada e DroidCam via Wi-Fi, em `localhost` ou HTTPS:
 6. Confirmar todos os botões manuais e ausência de chamadas de rede com quadros ou coordenadas.
 
 Essas verificações dependem de hardware e não foram realizadas pelos testes automatizados.
+
+## Revisão corretiva da Etapa 05
+
+O intervalo normal entre amostras aceita o período configurado (100 ms no worker ou 200 ms no fallback) mais 150 ms de variação. Uma interrupção maior reinicia a estabilidade sem somar o intervalo. Detecção ausente usa a tolerância separada de 180 ms; intervalos sem detecção não somam tempo de confirmação.
+
+O fallback troca o período efetivo para 200 ms mesmo após o worker estar ativo. A transição invalida quadros pendentes e limpa a confirmação. Timeouts configuráveis de 15 s para inicialização e 3 s para resposta encerram o worker e tentam fallback uma única vez por sessão. Resultados exigem ID pendente, geração de sessão e modo, fonte, elemento de vídeo, estado e época de visibilidade válidos. Promessas antigas só encerram seus próprios recursos. Bitmaps são fechados localmente ou transferidos ao worker, que os fecha em finally.

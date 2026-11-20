@@ -115,3 +115,13 @@
 - **Branch:** `feature/05-gesture-recognition`.
 - **Commit/PR:** registrar após publicação. Revisão pendente.
 - **Próxima etapa prevista:** 06 — Editor fotográfico, somente após revisão, merge e autorização.
+
+## 20/11/2026 — Revisão corretiva da Etapa 05
+
+- **Escopo:** validação temporal compatível com 5/10 Hz e variação de amostragem; agendamento do fallback atualizado após falha em operação; timeout de inicialização e inferência; descarte de resultados obsoletos e isolamento de promessas entre sessões.
+- **Arquivos:** hook de reconhecimento, serviço de validação, configuração, testes de gestos e documentação de reconhecimento.
+- **Dependências:** nenhuma adicionada.
+- **Branch:** feature/05-gesture-recognition; atualização do PR #9 para develop. Revisão pendente; sem merge.
+- **Validação:** resultados registrados no relatório desta revisão. Testes usam inferência simulada; validação física de precisão e fluidez continua pendente.
+- **Continuidade:** Etapa 06 depende de autorização.
+- **Resultados da revisão:** lint, typecheck, format:check e 43 testes passaram (35 preservados, 8 novos). Build de produção verificado antes do commit. Testes manuais de reconhecimento real continuam pendentes.

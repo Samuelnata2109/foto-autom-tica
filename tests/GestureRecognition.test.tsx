@@ -3,10 +3,15 @@ import { act, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGestureRecognition } from '../src/hooks/useGestureRecognition';
+import { createGestureRecognizer, detectGesture } from '../src/services/gestureRecognizer';
+import { gestureConfig } from '../src/config/gestureConfig';
+import type { GestureRecognizer } from '@mediapipe/tasks-vision';
+import type { GesturePhase } from '../src/types/gesture';
 import type { GestureWorkerRequest, GestureWorkerResponse } from '../src/types/gesture';
 
 vi.mock('../src/services/gestureRecognizer', () => ({
   createGestureRecognizer: vi.fn().mockRejectedValue(new Error('modelo indisponível')),
+  detectGesture: vi.fn().mockReturnValue(null),
 }));
 
 class FakeWorker {
@@ -35,12 +40,14 @@ const frame = { close: vi.fn() } as unknown as ImageBitmap;
 function Harness({
   cameraReady = true,
   source = stream,
+  phase = 'idle',
 }: {
   cameraReady?: boolean;
   source?: MediaStream | null;
+  phase?: GesturePhase;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const recognition = useGestureRecognition(videoRef, source, cameraReady, 'idle', onCommand);
+  const recognition = useGestureRecognition(videoRef, source, cameraReady, phase, onCommand);
   return (
     <>
       <video ref={videoRef} />
@@ -51,7 +58,9 @@ function Harness({
 }
 
 beforeEach(() => {
-  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
+  vi.useFakeTimers({
+    toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'performance'],
+  });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('Worker', FakeWorker);
   vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(frame));
@@ -144,4 +153,97 @@ describe('ciclo de reconhecimento', () => {
     expect(worker.terminate).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('unavailable');
   });
+});
+
+async function readyWorker() {
+  await act(async () => root.render(<Harness />));
+  const video = host.querySelector('video')!;
+  Object.defineProperties(video, {
+    readyState: { configurable: true, value: 2 },
+    videoWidth: { configurable: true, value: 640 },
+    videoHeight: { configurable: true, value: 360 },
+    currentTime: { configurable: true, writable: true, value: 1 },
+  });
+  await act(async () => host.querySelector('button')!.click());
+  const worker = FakeWorker.instances[0]!;
+  await act(async () => worker.reply({ type: 'ready' }));
+  return { worker, video };
+}
+
+it('aplica fallback após worker ativo e limita a 5 Hz', async () => {
+  const close = vi.fn();
+  vi.mocked(createGestureRecognizer).mockResolvedValueOnce({
+    close,
+  } as unknown as GestureRecognizer);
+  const { worker, video } = await readyWorker();
+  await act(async () => {
+    worker.onerror?.();
+    await Promise.resolve();
+  });
+  expect(worker.terminate).toHaveBeenCalledOnce();
+  for (let i = 0; i < 20; i++) {
+    video.currentTime += 1;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+  }
+  expect(detectGesture).toHaveBeenCalledTimes(5);
+});
+
+it('encerra worker sem resposta na inicialização e preserva botão manual', async () => {
+  await act(async () => root.render(<Harness />));
+  await act(async () => host.querySelector('button')!.click());
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(gestureConfig.workerInitializationTimeoutMs);
+  });
+  expect(FakeWorker.instances[0]!.terminate).toHaveBeenCalledOnce();
+  expect(host.textContent).toContain('unavailable');
+  expect(host.querySelector('button')!.disabled).toBe(false);
+});
+
+it('encerra worker sem resposta de inferência', async () => {
+  const { worker } = await readyWorker();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100);
+  });
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(gestureConfig.workerInferenceTimeoutMs);
+  });
+  expect(worker.terminate).toHaveBeenCalledOnce();
+  expect(host.textContent).toContain('unavailable');
+});
+
+it('descarta resultado de outro estado e identificador incorreto', async () => {
+  const { worker } = await readyWorker();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100);
+  });
+  await act(async () => root.render(<Harness phase="review" />));
+  await act(async () =>
+    worker.reply({ type: 'result', id: 999, detection: { name: 'Thumb_Up', score: 1 } }),
+  );
+  await act(async () =>
+    worker.reply({ type: 'result', id: 1, detection: { name: 'Thumb_Up', score: 1 } }),
+  );
+  expect(onCommand).not.toHaveBeenCalled();
+});
+
+it('fecha bitmap pendente da sessão anterior após desativar e reativar', async () => {
+  let resolve!: (value: ImageBitmap) => void;
+  vi.mocked(createImageBitmap).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  const { worker } = await readyWorker();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100);
+  });
+  await act(async () => host.querySelector('button')!.click());
+  await act(async () => host.querySelector('button')!.click());
+  await act(async () => resolve(frame));
+  expect(frame.close).toHaveBeenCalled();
+  expect(worker.messages.filter((message) => message.type === 'frame')).toHaveLength(0);
+  expect(FakeWorker.instances).toHaveLength(2);
 });

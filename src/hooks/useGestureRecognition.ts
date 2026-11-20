@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+﻿import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
-import { gestureConfig } from '../config/gestureConfig';
+import { gestureConfig as config } from '../config/gestureConfig';
 import { GestureValidation } from '../services/gestureValidation';
 import type {
   GestureCommand,
+  GestureDetection,
   GestureName,
   GesturePhase,
   GestureWorkerResponse,
@@ -25,63 +26,76 @@ export function useGestureRecognition(
   const [gesture, setGesture] = useState<GestureName | null>(null);
   const [progress, setProgress] = useState(0);
   const [confirmed, setConfirmed] = useState<GestureName | null>(null);
+  const latest = useRef({ phase, onCommand, stream, cameraReady, enabled });
+  latest.current = { phase, onCommand, stream, cameraReady, enabled };
+  const generation = useRef(0);
+  const epoch = useRef(0);
   const validator = useRef(new GestureValidation());
-  const latest = useRef({ phase, onCommand });
-  latest.current = { phase, onCommand };
-  const worker = useRef<Worker | null>(null);
-  const fallback = useRef<GestureRecognizer | null>(null);
-  const busy = useRef(false);
-  const lastFrame = useRef(-1);
-  const lastInference = useRef(-Infinity);
-  const nextId = useRef(0);
-
-  function clearFeedback(keepLatch = false) {
+  const clearFeedback = (keepLatch = false) => {
     validator.current.reset(keepLatch);
     setGesture(null);
     setProgress(0);
     setConfirmed(null);
-  }
-
+  };
   useEffect(() => {
+    epoch.current++;
     clearFeedback(true);
   }, [phase]);
-
   useEffect(() => {
-    clearFeedback();
-    lastFrame.current = -1;
-  }, [stream]);
-
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden) clearFeedback();
-      lastFrame.current = -1;
+    const change = () => {
+      epoch.current++;
+      clearFeedback(true);
     };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
+    document.addEventListener('visibilitychange', change);
+    return () => document.removeEventListener('visibilitychange', change);
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
-      setStatus('off');
-      setError('');
+    const session = ++generation.current;
+    clearFeedback();
+    if (!enabled || !cameraReady || !stream) {
+      setStatus(enabled ? 'unavailable' : 'off');
+      setError(enabled ? 'Aguarde a câmera ficar pronta para usar a IA.' : '');
       return;
     }
-    if (!cameraReady || !stream) {
-      setStatus('unavailable');
-      setError(
-        'Aguarde a câmera ficar pronta para usar a IA. Os controles manuais continuam disponíveis.',
-      );
-      return;
-    }
-    let cancelled = false;
-    setStatus('loading');
-    setError('');
-    const onDetection = (detection: { name: string; score: number } | null) => {
-      if (cancelled) return;
-      busy.current = false;
-      if (document.hidden || !['idle', 'countdown', 'review'].includes(latest.current.phase))
-        return;
-      const result = validator.current.update(detection, latest.current.phase, performance.now());
+    let disposed = false;
+    let worker: Worker | null = null;
+    let fallback: GestureRecognizer | null = null;
+    let fallbackStarted = false;
+    let active = false;
+    let modeGeneration = 0;
+    let period = 1000 / config.maximumInferenceHz;
+    let lastInference = -Infinity;
+    let lastFrame = -1;
+    let sequence = 0;
+    type Ticket = {
+      id: number;
+      epoch: number;
+      phase: GesturePhase;
+      video: HTMLVideoElement;
+      mode: number;
+      timestamp: number;
+    };
+    let pending: Ticket | null = null;
+    let deadline: number | undefined;
+    const live = () =>
+      !disposed &&
+      generation.current === session &&
+      latest.current.enabled &&
+      latest.current.cameraReady &&
+      latest.current.stream === stream;
+    const valid = (ticket: Ticket) =>
+      live() &&
+      pending === ticket &&
+      ticket.mode === modeGeneration &&
+      ticket.epoch === epoch.current &&
+      ticket.phase === latest.current.phase &&
+      ticket.video === videoRef.current &&
+      !document.hidden;
+    const clearDeadline = () => window.clearTimeout(deadline);
+    const apply = (ticket: Ticket, detection: GestureDetection) => {
+      if (!valid(ticket)) return;
+      const result = validator.current.update(detection, ticket.phase, ticket.timestamp, period);
       setGesture(result.gesture);
       setProgress(result.progress);
       if (result.command) {
@@ -89,51 +103,73 @@ export function useGestureRecognition(
         latest.current.onCommand(result.command);
       }
     };
+    const fail = () => {
+      if (!live()) return;
+      active = false;
+      clearFeedback();
+      setStatus('unavailable');
+      setError('Não foi possível carregar ou processar a IA. Use os controles manuais.');
+    };
     const useFallback = async () => {
+      if (!live() || fallbackStarted) return;
+      fallbackStarted = true;
+      active = false;
+      modeGeneration++;
+      worker?.terminate();
+      worker = null;
+      pending = null;
+      clearDeadline();
+      clearFeedback(true);
+      period = 1000 / Math.min(config.fallbackInferenceHz, config.maximumInferenceHz);
+      lastInference = -Infinity;
+      lastFrame = -1;
+      setStatus('loading');
       try {
         const { createGestureRecognizer } = await import('../services/gestureRecognizer');
+        if (!live()) return;
         const recognizer = await createGestureRecognizer(
           `${root}mediapipe/wasm`,
           `${root}models/gesture_recognizer.task`,
         );
-        if (cancelled) recognizer.close();
-        else {
-          fallback.current = recognizer;
-          setStatus('active');
-          setError('Worker indisponível. IA operando com frequência reduzida.');
+        if (!live()) {
+          recognizer.close();
+          return;
         }
+        fallback = recognizer;
+        active = true;
+        setStatus('active');
+        setError('Worker indisponível. IA operando com frequência reduzida.');
       } catch {
-        if (!cancelled) {
-          setStatus('unavailable');
-          setError('Não foi possível carregar a IA. Use os controles manuais.');
-        }
+        fail();
       }
     };
+    setStatus('loading');
+    setError('');
     try {
       if (typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined')
-        throw new Error('Worker indisponível.');
+        throw new Error();
       const instance = new Worker(
         new URL('../workers/gestureRecognition.worker.ts', import.meta.url),
         { type: 'module' },
       );
-      worker.current = instance;
+      worker = instance;
+      deadline = window.setTimeout(() => void useFallback(), config.workerInitializationTimeoutMs);
       instance.onmessage = (event: MessageEvent<GestureWorkerResponse>) => {
-        if (cancelled || worker.current !== instance) return;
-        if (event.data.type === 'ready') setStatus('active');
-        else if (event.data.type === 'result') onDetection(event.data.detection);
-        else {
-          instance.terminate();
-          worker.current = null;
-          busy.current = false;
-          void useFallback();
-        }
+        if (!live() || worker !== instance) return;
+        const message = event.data;
+        if (message.type === 'ready' && !active) {
+          clearDeadline();
+          active = true;
+          setStatus('active');
+        } else if (message.type === 'result' && pending?.id === message.id) {
+          const ticket = pending;
+          clearDeadline();
+          apply(ticket, message.detection);
+          pending = null;
+        } else if (message.type === 'error') void useFallback();
       };
       instance.onerror = () => {
-        if (cancelled || worker.current !== instance) return;
-        instance.terminate();
-        worker.current = null;
-        busy.current = false;
-        void useFallback();
+        if (worker === instance) void useFallback();
       };
       instance.postMessage({
         type: 'init',
@@ -143,110 +179,72 @@ export function useGestureRecognition(
     } catch {
       void useFallback();
     }
-    return () => {
-      cancelled = true;
-      worker.current?.terminate();
-      worker.current = null;
-      fallback.current?.close();
-      fallback.current = null;
-      busy.current = false;
-      clearFeedback();
-    };
-  }, [enabled, cameraReady, stream]);
 
-  useEffect(() => {
-    if (
-      status !== 'active' ||
-      !cameraReady ||
-      !stream ||
-      !['idle', 'countdown', 'review'].includes(phase)
-    )
-      return;
-    let stopped = false;
-    const period =
-      1000 /
-      (fallback.current
-        ? Math.min(5, gestureConfig.maximumInferenceHz)
-        : gestureConfig.maximumInferenceHz);
-    const timer = window.setInterval(
-      async () => {
-        const video = videoRef.current;
-        if (
-          stopped ||
-          document.hidden ||
-          busy.current ||
-          !video ||
-          video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-          !video.videoWidth ||
-          !video.videoHeight ||
-          video.currentTime === lastFrame.current
-        )
+    const timer = window.setInterval(async () => {
+      const video = videoRef.current;
+      if (
+        !live() ||
+        !active ||
+        pending ||
+        document.hidden ||
+        !['idle', 'countdown', 'review'].includes(latest.current.phase) ||
+        !video ||
+        video.readyState < 2 ||
+        !video.videoWidth ||
+        !video.videoHeight ||
+        video.currentTime === lastFrame
+      )
+        return;
+      const now = performance.now();
+      if (now - lastInference < period) return;
+      const ticket: Ticket = {
+        id: ++sequence,
+        epoch: epoch.current,
+        phase: latest.current.phase,
+        video,
+        mode: modeGeneration,
+        timestamp: now,
+      };
+      pending = ticket;
+      lastInference = now;
+      lastFrame = video.currentTime;
+      let frame: ImageBitmap | null = null;
+      try {
+        const width = Math.min(video.videoWidth, config.maximumInputWidth);
+        frame = await createImageBitmap(video, {
+          resizeWidth: width,
+          resizeHeight: Math.max(1, Math.round((video.videoHeight * width) / video.videoWidth)),
+          resizeQuality: 'low',
+        });
+        if (!valid(ticket)) return;
+        if (worker) {
+          worker.postMessage({ type: 'frame', frame, timestamp: now, id: ticket.id }, [frame]);
+          frame = null; // Ownership transferred to the worker, which closes it in finally.
+          deadline = window.setTimeout(() => void useFallback(), config.workerInferenceTimeoutMs);
           return;
-        const now = performance.now();
-        if (now - lastInference.current < period) return;
-        busy.current = true;
-        lastFrame.current = video.currentTime;
-        lastInference.current = now;
-        try {
-          const width = Math.min(video.videoWidth, gestureConfig.maximumInputWidth);
-          const height = Math.max(1, Math.round((video.videoHeight * width) / video.videoWidth));
-          const frame = await createImageBitmap(video, {
-            resizeWidth: width,
-            resizeHeight: height,
-            resizeQuality: 'low',
-          });
-          if (stopped || document.hidden) {
-            frame.close();
-            busy.current = false;
-            return;
-          }
-          if (worker.current)
-            worker.current.postMessage(
-              { type: 'frame', frame, timestamp: now, id: ++nextId.current },
-              [frame],
-            );
-          else if (fallback.current) {
-            const { detectGesture } = await import('../services/gestureRecognizer');
-            try {
-              const detection = detectGesture(fallback.current, frame, now);
-              if (
-                stopped ||
-                document.hidden ||
-                !['idle', 'countdown', 'review'].includes(latest.current.phase)
-              )
-                return;
-              const result = validator.current.update(
-                detection,
-                latest.current.phase,
-                performance.now(),
-              );
-              setGesture(result.gesture);
-              setProgress(result.progress);
-              if (result.command) {
-                setConfirmed(result.gesture);
-                latest.current.onCommand(result.command);
-              }
-            } finally {
-              frame.close();
-              busy.current = false;
-            }
-          } else {
-            frame.close();
-            busy.current = false;
-          }
-        } catch {
-          busy.current = false;
-          setStatus('unavailable');
-          setError('Falha ao processar vídeo com IA. Use os controles manuais.');
         }
-      },
-      Math.max(50, period / 2),
-    );
+        const { detectGesture } = await import('../services/gestureRecognizer');
+        if (!valid(ticket) || !fallback) return;
+        apply(ticket, detectGesture(fallback, frame, now));
+      } catch {
+        if (valid(ticket)) {
+          if (worker) void useFallback();
+          else fail();
+        }
+      } finally {
+        frame?.close();
+        if (pending === ticket && (!worker || frame)) pending = null;
+      }
+    }, 50);
     return () => {
-      stopped = true;
+      disposed = true;
+      modeGeneration++;
+      pending = null;
       window.clearInterval(timer);
+      clearDeadline();
+      worker?.terminate();
+      fallback?.close();
     };
-  }, [status, cameraReady, stream, phase, videoRef]);
-
+  }, [enabled, cameraReady, stream, videoRef]);
   return { enabled, setEnabled, status, error, gesture, progress, confirmed };
 }

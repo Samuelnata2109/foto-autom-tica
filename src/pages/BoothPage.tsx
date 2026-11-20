@@ -7,6 +7,7 @@ import { CameraControls } from '../components/CameraControls';
 import { CameraStatus, CameraViewport } from '../components/CameraViewport';
 import { CaptureControls } from '../components/CaptureControls';
 import { CountdownOverlay } from '../components/CountdownOverlay';
+import { GestureDiagnostics } from '../components/GestureDiagnostics';
 import { GestureGuide } from '../components/GestureGuide';
 import { EmptyState } from '../components/EmptyState';
 import { PhotoReview } from '../components/PhotoReview';
@@ -71,17 +72,38 @@ export function BoothPage() {
               <CameraViewport
                 video={
                   camera.stream && (
-                    <video
-                      ref={camera.videoRef}
-                      aria-label="Prévia ao vivo da câmera"
-                      data-mirrored={camera.mirrored}
-                      autoPlay
-                      muted
-                      playsInline
-                      onPlaying={camera.onPlaying}
-                      onResize={camera.onResize}
-                      onError={camera.onVideoError}
-                    />
+                    <>
+                      <video
+                        ref={camera.videoRef}
+                        aria-label="Prévia ao vivo da câmera"
+                        data-mirrored={camera.mirrored}
+                        autoPlay
+                        muted
+                        playsInline
+                        onPlaying={camera.onPlaying}
+                        onResize={camera.onResize}
+                        onError={camera.onVideoError}
+                      />
+                      {recognition.debug &&
+                        recognition.overlay &&
+                        recognition.sample?.detection?.points && (
+                          <svg
+                            className="gesture-landmarks"
+                            aria-hidden="true"
+                            viewBox={`0 0 ${camera.settings.width} ${camera.settings.height}`}
+                            style={{ transform: camera.mirrored ? 'scaleX(-1)' : undefined }}
+                          >
+                            {recognition.sample.detection.points.map((p, i) => (
+                              <circle
+                                key={i}
+                                cx={p.x * (camera.settings.width ?? 1)}
+                                cy={p.y * (camera.settings.height ?? 1)}
+                                r={(camera.settings.width ?? 320) / 180}
+                              />
+                            ))}
+                          </svg>
+                        )}
+                    </>
                   )
                 }
                 overlay={
@@ -131,7 +153,10 @@ export function BoothPage() {
                 </p>
               )}
             </div>
-            <GestureGuide recognition={recognition} phase={state.phase} />
+            <div>
+              <GestureGuide recognition={recognition} phase={state.phase} />
+              <GestureDiagnostics ai={recognition} phase={state.phase} />
+            </div>
           </div>
           {(state.phase === 'capturing' || reviewing) && (
             <div className="capture-flash" aria-hidden="true" />

@@ -27,7 +27,9 @@ ser cancelada. Na revisão, **Tirar novamente** descarta a foto e volta à trans
 O espelhamento da prévia não altera a fotografia.
 
 Em `npm run dev`, **Prévias de desenvolvimento** abre os exemplos de contagem, revisão e
-compartilhamento. O reconhecimento de gestos permanece previsto para a Etapa 05.
+compartilhamento. O reconhecimento local de gestos da Etapa 05 pode ser ativado na cabine; os comandos manuais continuam disponíveis.
+
+Para testar gestos, execute `npm run setup:gesture-model` uma vez, abra a cabine, autorize a câmera e ative o reconhecimento no guia lateral. Mantenha palma aberta por 2 s para contagem de 5 s, sinal de paz para 10 s, punho fechado para cancelar ou polegar para cima na revisão para confirmar. Consulte [RECONHECIMENTO_GESTOS.md](docs/RECONHECIMENTO_GESTOS.md) para limites e validação física.
 As prévias ficam fora do build de produção.
 
 ## Verificações

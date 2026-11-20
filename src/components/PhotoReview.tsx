@@ -10,11 +10,13 @@ export function PhotoReview({
   confirmed,
   onRetake,
   onConfirm,
+  gestureActive = false,
 }: {
   photo: SessionPhoto;
   confirmed: boolean;
   onRetake: () => void;
   onConfirm: () => void;
+  gestureActive?: boolean;
 }) {
   const section = useEntranceAnimation<HTMLElement>(photo.url);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -45,6 +47,9 @@ export function PhotoReview({
         </Button>
       </div>
       <p id="editing-availability">Personalização disponível na Etapa 06.</p>
+      {!confirmed && gestureActive && (
+        <p>Mostre o polegar para cima por 2 segundos para confirmar a foto.</p>
+      )}
       {confirmed && (
         <p ref={confirmation} tabIndex={-1} role="status">
           Foto confirmada para esta sessão.

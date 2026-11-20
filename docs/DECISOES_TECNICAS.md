@@ -24,7 +24,11 @@ MediaPipe Tasks Vision, o cliente Supabase e a biblioteca QRCode ficam para suas
 
 ## DT-03 — Vídeo e processamento no dispositivo
 
-**Status:** entrada de vídeo adotada na Etapa 03 e Canvas na Etapa 04. MediaPipe permanece previsto.
+**Status:** entrada de vídeo adotada na Etapa 03, Canvas na Etapa 04 e MediaPipe Tasks Vision na Etapa 05.
+
+## Etapa 05 — inferência local de gestos
+
+Modelo oficial Gesture Recognizer float16/1 e `@mediapipe/tasks-vision` 1.2.3 fixado, com WASM da mesma instalação servidos pelo Vite sob `BASE_URL`. CPU é a escolha inicial; GPU não é presumida mais rápida. A inferência síncrona roda prioritariamente em Web Worker. Quando o worker não inicializa, a alternativa reduz a frequência na thread principal e mantém controles manuais. Um único quadro novo de até 320 px de largura é processado por vez, sem afetar a resolução da fotografia. A foto e o vídeo não são enviados a servidores. Os quatro comandos reutilizam `usePhotoCapture`.
 
 Usar MediaDevices para webcams locais, incluindo a webcam virtual do DroidCam.
 O transporte USB foi a primeira opção para aproveitar o cabo e dispensar sinalização

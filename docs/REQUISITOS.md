@@ -9,7 +9,7 @@ Os requisitos marcados como previstos serão refinados e validados na etapa indi
 | RF-01 | 01    | Implementado | Exibir nome, identificação do projeto e aviso de desenvolvimento na página inicial.                                                               |
 | RF-02 | 03    | Implementado | Exibir vídeo ao vivo de webcam física ou virtual DroidCam, trocar de câmera e permitir reconexão manual.                                          |
 | RF-03 | 04    | Implementado | Permitir disparo manual e cancelar contagens de 5 ou 10 segundos. Gerar uma foto por disparo, na resolução da fonte de vídeo, e exibir a revisão. |
-| RF-04 | 05    | Previsto     | Reconhecer o gesto configurado localmente e iniciar a mesma contagem do comando manual quando a sessão estiver pronta.                            |
+| RF-04 | 05    | Implementado | Reconhecer quatro gestos localmente e acionar contagem, cancelamento ou confirmação conforme o estado da cabine.                                  |
 | RF-05 | 06    | Previsto     | Aplicar e remover filtros e molduras, visualizar a composição e exportar a foto.                                                                  |
 | RF-06 | 07    | Previsto     | Segmentar as pessoas e substituir o cenário com opção de voltar ao fundo original.                                                                |
 | RF-07 | 08    | Previsto     | Armazenar a foto autorizada em área privada do Supabase e permitir sua exclusão.                                                                  |

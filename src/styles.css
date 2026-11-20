@@ -747,8 +747,43 @@
   position: relative;
 }
 
-.booth-grid[hidden] {
+.booth-grid[data-reviewing='true'] {
+  margin-top: var(--space-3);
+}
+.booth-grid[data-reviewing='true'] .booth-stage {
+  max-width: 19rem;
+}
+.booth-grid[data-reviewing='true'] .camera-viewport {
+  min-height: 10rem;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+}
+.booth-grid[data-reviewing='true'] .framing-guides {
   display: none;
+}
+.gesture-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.gesture-toggle input {
+  accent-color: var(--color-booth-accent);
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.gesture-toggle input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+.gesture-guide .gesture-status {
+  color: var(--color-booth-accent);
+}
+.gesture-guide progress {
+  width: 100%;
+  height: 0.5rem;
+  accent-color: var(--color-booth-accent);
 }
 
 .camera-viewport .countdown {

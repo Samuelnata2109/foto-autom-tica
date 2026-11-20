@@ -21,6 +21,7 @@ let stream: MediaStream;
 let connect: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  vi.spyOn(composition, 'composePhoto').mockResolvedValue(null);
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});

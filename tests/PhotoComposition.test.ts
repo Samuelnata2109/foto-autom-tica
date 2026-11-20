@@ -58,6 +58,18 @@ it('permite usar a foto original quando a URL da moldura está ausente', async (
   expect(createImageBitmap).not.toHaveBeenCalled();
 });
 
+it('carrega a moldura oficial sem precisar fornecer uma URL', async () => {
+  await expect(composePhoto(original, signal)).resolves.toEqual({
+    blob: jpeg,
+    width: 4000,
+    height: 2250,
+  });
+  expect(fetch).toHaveBeenCalledExactlyOnceWith(
+    expect.stringMatching(/feira-das-profissoes.*\.png/),
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  );
+});
+
 it('rejeita falha HTTP ao carregar a moldura', async () => {
   vi.mocked(fetch).mockResolvedValueOnce({ ok: false } as Response);
   await expect(composePhoto(original, signal, '/frame.png')).rejects.toThrow('carregar');

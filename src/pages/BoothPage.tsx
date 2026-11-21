@@ -11,12 +11,14 @@ import { GestureDiagnostics } from '../components/GestureDiagnostics';
 import { GestureGuide } from '../components/GestureGuide';
 import { EmptyState } from '../components/EmptyState';
 import { PhotoReview } from '../components/PhotoReview';
+import { PhotoStorageConsent, StorageOperator } from '../components/PhotoStorageConsent';
 import { useCamera } from '../hooks/useCamera';
 import { useGestureRecognition } from '../hooks/useGestureRecognition';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { cameraMessages } from '../services/camera';
 import type { TimerDuration } from '../types/photo';
 import { scenarios, type Scenario } from '../services/virtualBackground';
+import { storageConfigured } from '../services/privatePhotoStorage';
 
 const backgroundStatus = {
   loading: 'Preparando o modelo de cenário…',
@@ -29,6 +31,7 @@ export function BoothPage() {
   const { status } = camera;
   const [duration, setDuration] = useState<TimerDuration>(5);
   const [scenario, setScenario] = useState<Scenario>('original');
+  const [operatorToken, setOperatorToken] = useState<string | null>(null);
   const ready = status === 'active' && Boolean(camera.settings.width && camera.settings.height);
   const capture = usePhotoCapture(camera.videoRef, camera.stream, ready);
   const { state, countdown, error } = capture;
@@ -75,6 +78,9 @@ export function BoothPage() {
               onConfirm={capture.confirm}
               gestureActive={recognition.enabled && recognition.status === 'active'}
             />
+          )}
+          {storageConfigured && state.phase === 'confirmed' && (
+            <PhotoStorageConsent key={state.photo.url} photo={state.photo} token={operatorToken} />
           )}
           <div className="booth-grid" data-reviewing={reviewing}>
             <div className="booth-stage booth-stage--camera">
@@ -199,6 +205,7 @@ export function BoothPage() {
             <div className="capture-flash" aria-hidden="true" />
           )}
         </div>
+        {storageConfigured && <StorageOperator token={operatorToken} onToken={setOperatorToken} />}
         {import.meta.env.DEV && !busy && !reviewing && (
           <Link className="preview-link" to="/previa/contagem">
             Prévias de desenvolvimento

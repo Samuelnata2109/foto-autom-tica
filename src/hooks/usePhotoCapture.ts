@@ -101,6 +101,7 @@ export function usePhotoCapture(
       ticket.captured = true;
       let photo = original;
       let frame: SessionPhoto['frame'] = 'missing';
+      let scenarioId: Scenario = 'original';
       if (ticket.scenario !== 'original') {
         ticket.background = new AbortController();
         setBackgroundProgress('loading');
@@ -115,6 +116,7 @@ export function usePhotoCapture(
           );
           photo = composed.photo;
           frame = composed.frame;
+          scenarioId = ticket.scenario;
         } catch (failure) {
           if (operation.current !== ticket) return;
           const detail = ticket.background.signal.aborted
@@ -144,7 +146,7 @@ export function usePhotoCapture(
       const url = URL.createObjectURL(photo.blob);
       photoUrl.current = url;
       operation.current = null;
-      setState({ phase: 'review', photo: { ...photo, original, frame, url } });
+      setState({ phase: 'review', photo: { ...photo, original, frame, url, scenarioId } });
     } catch (failure) {
       if (operation.current !== ticket) return;
       reset(failure instanceof Error ? failure.message : 'Não foi possível capturar a foto.');

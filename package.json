@@ -14,6 +14,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:storage:integration": "node scripts/test-photo-storage.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

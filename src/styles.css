@@ -727,6 +727,22 @@
   color: var(--color-booth-text);
 }
 
+.storage-login label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.storage-login input {
+  min-height: 2.75rem;
+  min-width: 0;
+  max-width: 100%;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--color-booth-surface);
+  color: var(--color-booth-text);
+}
+
 .camera-controls__mirror {
   display: inline-flex;
   align-items: center;

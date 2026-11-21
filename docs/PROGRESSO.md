@@ -165,3 +165,19 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Testes automatizados:** 81 passaram com `npm run test -- --maxWorkers=1 --pool=threads`, incluindo prazos, descarte, pausa adaptativa, retomada, limpeza, botões manuais e os quatro comandos de gesto.
 - **Verificações:** lint, typecheck, build e formatação aprovados. O PNG no build manteve o SHA-256 original. Em Chrome headless com a imagem pública de polegar, o worker do build levou 892 ms na primeira inferência e 291–366 ms nas seguintes. A preparação levou 3–10 ms. Este ensaio não mede FPS do DroidCam.
 - **Pendências:** medir com webcam e DroidCam, comparar fluidez com IA ligada e desligada e validar gestos, botões e revisão da foto. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.
+
+## 20/11/2026 — Etapa 06/12 — Molduras adaptativas
+
+- **Base:** `feature/06-adaptive-photo-frames` parte de `develop` em `8434474`, que já contém os PRs #11 e #12.
+- **Entrega:** seleção da arte 16:9 ou 4:3 pelas dimensões da captura, sobreposição proporcional em Canvas e JPEG 0,95 nas dimensões originais. Formatos sem arte correspondente mantêm o JPEG original com aviso. A regra roda somente após a captura.
+- **Arquivos:** `photoComposition.ts`, `usePhotoCapture.ts`, `photo.ts`, `PhotoReview.tsx`, testes de composição e captura, PNG 4:3 e documentação. Nenhuma dependência adicionada.
+- **Arte 4:3:** 640 × 480, hash idêntico ao arquivo fornecido. A amostra central de 100 × 100 pixels contém 9.393 pixels com alfa 0 e 607 com alfa 1 de 255.
+- **Verificação:** 90 testes passaram com `npm run test -- --maxWorkers=1 --pool=threads`, incluindo seleção, ausência e falha de arte, proporções sem moldura, confirmação e repetição. Em Chrome headless, o JPEG composto preservou as dimensões e os pixels de referência do original na abertura central em 1920 × 1080, 640 × 480 e 1280 × 960. O teste também conferiu a arte incorporada na borda.
+- **Pendências:** validar com as duas câmeras no equipamento do evento. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.
+
+## 20/11/2026 — Etapa 06/12 — Enquadramento da revisão
+
+- **Defeito reproduzido:** o painel de revisão limitava sua altura enquanto a foto continuava dimensionada pela largura, podendo ultrapassar a área visível. As faixas laterais relatadas não apareceram no ensaio controlado.
+- **Correção:** `PhotoReview.tsx` fornece as dimensões do arquivo a `PhotoPreview.tsx`. Em `styles.css`, o painel acompanha a proporção da fotografia em desktop e telas estreitas. Os PNGs, Canvas de composição e câmera permanecem com o mesmo fluxo.
+- **Testes:** 90 testes passaram, assim como lint, typecheck, build e formatação. `PhotoCapture.test.tsx` verifica as dimensões e a proporção entregues à revisão. Em Chrome headless, o ensaio com uma foto pública e um padrão sintético em 4:3 e 16:9 verificou a proporção da prévia e os pixels do JPEG na abertura dos PNGs oficiais. Nenhuma dependência adicionada.
+- **Status:** atualização no [PR #14](https://github.com/Samuelnata2109/foto-autom-tica/pull/14), em `feature/06-adaptive-photo-frames`. A validação com o quadro específico do DroidCam relatado pelo usuário continua pendente.

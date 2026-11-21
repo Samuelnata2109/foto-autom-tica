@@ -325,8 +325,7 @@
   inset: 0;
   z-index: -1;
 }
-.camera-viewport__media video,
-.photo-preview img {
+.camera-viewport__media video {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -582,9 +581,16 @@
   min-height: clamp(15rem, 50dvh, 44rem);
   padding: var(--space-4);
 }
-.photo-preview:has(img) {
+.photo-preview--filled {
+  width: min(100%, calc(65dvh * var(--photo-ratio)));
+  min-height: 0;
+  margin-inline: auto;
   padding: 0;
-  max-height: 65dvh;
+}
+.photo-preview--filled img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .sharing-grid {
   display: grid;

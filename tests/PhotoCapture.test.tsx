@@ -177,6 +177,10 @@ describe('Sistema fotográfico', () => {
     expect(createUrl).toHaveBeenCalledExactlyOnceWith(composed);
     expect(get('.photo-review').textContent).toContain('Moldura oficial aplicada');
     expect(get('.photo-review__details').textContent).toContain(`${width} × ${height}`);
+    const preview = get('.photo-preview--filled');
+    const image = get<HTMLImageElement>('.photo-preview--filled img');
+    expect(preview.style.getPropertyValue('--photo-ratio')).toBe(String(width / height));
+    expect([image.width, image.height]).toEqual([width, height]);
     expect(composition.composePhoto).toHaveBeenCalledExactlyOnceWith(
       { blob: jpeg, width, height },
       expect.any(AbortSignal),

@@ -38,7 +38,14 @@ export function PhotoReview({
       <h2 ref={heading} tabIndex={-1}>
         Revisão da foto
       </h2>
-      <PhotoPreview photo={{ src: photo.url, alt: 'Fotografia capturada na cabine' }} />
+      <PhotoPreview
+        photo={{
+          src: photo.url,
+          alt: 'Fotografia capturada na cabine',
+          width: photo.width,
+          height: photo.height,
+        }}
+      />
       <p className="photo-review__details">
         {photo.width} × {photo.height} · JPEG
       </p>

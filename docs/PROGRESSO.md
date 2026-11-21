@@ -174,3 +174,10 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Arte 4:3:** 640 × 480, hash idêntico ao arquivo fornecido. A amostra central de 100 × 100 pixels contém 9.393 pixels com alfa 0 e 607 com alfa 1 de 255.
 - **Verificação:** 90 testes passaram com `npm run test -- --maxWorkers=1 --pool=threads`, incluindo seleção, ausência e falha de arte, proporções sem moldura, confirmação e repetição. Em Chrome headless, o JPEG composto preservou as dimensões e os pixels de referência do original na abertura central em 1920 × 1080, 640 × 480 e 1280 × 960. O teste também conferiu a arte incorporada na borda.
 - **Pendências:** validar com as duas câmeras no equipamento do evento. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.
+
+## 20/11/2026 — Etapa 06/12 — Enquadramento da revisão
+
+- **Defeito reproduzido:** o painel de revisão limitava sua altura enquanto a foto continuava dimensionada pela largura, podendo ultrapassar a área visível. As faixas laterais relatadas não apareceram no ensaio controlado.
+- **Correção:** `PhotoReview.tsx` fornece as dimensões do arquivo a `PhotoPreview.tsx`. Em `styles.css`, o painel acompanha a proporção da fotografia em desktop e telas estreitas. Os PNGs, Canvas de composição e câmera permanecem com o mesmo fluxo.
+- **Testes:** 90 testes passaram, assim como lint, typecheck, build e formatação. `PhotoCapture.test.tsx` verifica as dimensões e a proporção entregues à revisão. Em Chrome headless, o ensaio com uma foto pública e um padrão sintético em 4:3 e 16:9 verificou a proporção da prévia e os pixels do JPEG na abertura dos PNGs oficiais. Nenhuma dependência adicionada.
+- **Status:** atualização no [PR #14](https://github.com/Samuelnata2109/foto-autom-tica/pull/14), em `feature/06-adaptive-photo-frames`. A validação com o quadro específico do DroidCam relatado pelo usuário continua pendente.

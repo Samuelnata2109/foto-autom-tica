@@ -31,6 +31,46 @@ function infer(name: string, score: number, pose: GestureName | HandPoint[]) {
   return detectGesture(model, {} as ImageBitmap, 100);
 }
 describe('reconhecimento híbrido', () => {
+  it.each([180, 240])(
+    'confere o sinal de paz com proporção corrigida em vídeo de 320 × %i',
+    (height) => {
+      const peace = hand('Victory');
+      peace[8] = { x: -1.33, y: 5, z: 0 };
+      peace[12] = { x: -0.55, y: 5, z: 0 };
+      const image = peace.map(({ x, y, z }) => ({
+        x: 0.74 - x * 0.03,
+        y: 0.3 + y * 0.03 * (320 / height),
+        z: z * 0.03,
+      }));
+      const frame = { width: 320, height } as ImageBitmap;
+      const detect = (score: number, worldLandmarks: HandPoint[][]) =>
+        detectGesture(
+          {
+            recognizeForVideo: () => ({
+              gestures: [[{ categoryName: 'Victory', score }]],
+              landmarks: [image],
+              worldLandmarks,
+            }),
+          } as unknown as GestureRecognizer,
+          frame,
+          0,
+        );
+
+      expect(handGeometry(image)).toBeNull();
+      const supported = detect(0.76, []);
+      expect(supported).toMatchObject({
+        name: 'Victory',
+        geometry: 'Victory',
+        geometrySource: 'image',
+      });
+      expect(new GestureVote().accept(supported, 0)).toBe(supported);
+      expect(new GestureVote().accept(detect(0.73, []), 0)).toBeNull();
+      expect(detect(0.99, [hand('Open_Palm')])).toMatchObject({
+        name: 'None',
+        geometrySource: 'world',
+      });
+    },
+  );
   it.each(['Open_Palm', 'Victory', 'Closed_Fist', 'Thumb_Up'] as const)(
     'aceita %s inclinado a 37 graus, deslocado e em escalas distintas com as duas mãos',
     (name) => {

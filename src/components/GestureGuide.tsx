@@ -1,5 +1,5 @@
 import { Hand, ThumbsUp } from 'lucide-react';
-import { gestureLabels } from '../services/gestureValidation';
+import { commandFor, gestureLabels } from '../services/gestureValidation';
 import { gestureConfig } from '../config/gestureConfig';
 import type { GestureCommand, GestureName, GesturePhase } from '../types/gesture';
 import { Button } from './Button';
@@ -56,6 +56,7 @@ type Recognition = {
   retry: () => void;
   gesture: GestureName | null;
   handDetected: boolean;
+  diagnosticOnly: boolean;
   progress: number;
   feedback: { gesture: GestureName; command: GestureCommand } | null;
 };
@@ -84,6 +85,7 @@ export function GestureGuide({
   phase: GesturePhase;
 }) {
   const action = recognition.feedback && executed[recognition.feedback.command];
+  const blockedByPhase = recognition.gesture && !commandFor(phase, recognition.gesture);
   return (
     <aside className="gesture-guide" aria-labelledby="gesture-heading">
       <h2 id="gesture-heading">Guia de gestos</h2>
@@ -98,7 +100,8 @@ export function GestureGuide({
       <p className="gesture-status" role="status">
         {recognition.status === 'off' && 'IA desativada'}
         {recognition.status === 'loading' && 'Carregando modelo de gestos…'}
-        {recognition.status === 'active' && 'IA ativa'}
+        {recognition.status === 'active' &&
+          (recognition.diagnosticOnly ? 'Observação ativa · comandos pausados' : 'IA ativa')}
         {recognition.status === 'unavailable' && 'IA indisponível'}
       </p>
       {recognition.error && <p role="alert">{recognition.error}</p>}
@@ -116,6 +119,7 @@ export function GestureGuide({
               : recognition.handDetected
                 ? 'Mão detectada · Aguardando gesto estável'
                 : 'Aguardando uma mão'}
+            {blockedByPhase && !recognition.diagnosticOnly ? ' · disponível em outra fase' : ''}
           </p>
           <progress
             aria-label="Progresso da confirmação do gesto"

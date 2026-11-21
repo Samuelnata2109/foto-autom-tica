@@ -213,3 +213,11 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Correção:** interpretar e limpar o retorno antes do roteador. O SDK oficial `@supabase/auth-js` valida a sessão de convite ou recuperação e atualiza a senha. O login da equipe usa a mesma integração, com a verificação de operador já existente.
 - **Validação:** lint, tipagem e build passaram. A suíte passou com 116 testes em 11 arquivos usando `--pool=forks --maxWorkers=1`, incluindo oito testes novos de links, sessão e formulário. A execução anterior com threads teve dois timeouts de inicialização de workers do Vitest.
 - **Pendência de homologação:** validar no navegador um novo convite e uma nova recuperação com e-mails reais. O [guia de armazenamento](ARMAZENAMENTO_PRIVADO.md) registra Site URL, Redirect URLs e o roteiro de validação. Correção na branch `feature/08-backend-storage`, no PR #16.
+
+### 21/11/2026 — Continuidade da confirmação dos gestos
+
+- **Base** `develop` com os PRs #16 e #17 integrados. Branch `fix/gesture-confirmation-stability` para a correção.
+- **Causa** na frequência reduzida, uma única amostra incerta pode separar dois resultados válidos por mais de 750 ms mesmo com a mão à vista. A geometria inconclusiva em 3D também deixava de aproveitar os pontos normalizados disponíveis no quadro.
+- **Mudanças** recuperação de uma amostra incerta sem contabilizar a pausa, verificação complementar com a geometria do quadro e indicação de bloqueios no guia. Configuração, serviços, hook, componentes, testes e [roteiro de reconhecimento](RECONHECIMENTO_GESTOS.md) atualizados. Nenhuma dependência nova.
+- **Verificações** lint, tipagem, build e formatação aprovados. Os 130 testes passaram com `npm run test -- --pool=forks --maxWorkers=1`. Os seis novos casos cobrem projeções em 4:3 e 16:9 e amostras intermitentes. O commit e o PR constam no relatório de entrega.
+- **Pendência** medição de precisão, latência e fluidez com webcam e DroidCam. O reconhecimento processa uma mão por vez.

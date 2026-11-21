@@ -142,6 +142,41 @@ it('não conta perda de detecção ou pausas prolongadas na frequência reduzida
   expect(v.update(fist, 'countdown', 3000, 200, true).progress).toBe(0);
 });
 
+it('preserva a confirmação diante de um quadro incerto com a mão visível a 2,4 Hz', () => {
+  const validator = new GestureValidation();
+  const update = (detection: typeof palm | null, time: number) =>
+    validator.update(detection, 'idle', time, 420, true, true);
+  for (const time of [0, 420, 840]) expect(update(palm, time).command).toBeNull();
+  const expectedProgress = 840 / gestureConfig.confirmationMs;
+  expect(update(null, 1260)).toMatchObject({ command: null, progress: expectedProgress });
+  expect(update(palm, 1680)).toMatchObject({ command: null, progress: expectedProgress });
+  expect(update(palm, 2100).command).toBeNull();
+  expect(update(palm, 2520).command).toBe('start5');
+  for (const time of [2940, 3360, 3780, 4200, 4620, 5040])
+    expect(update(palm, time).command).toBeNull();
+});
+
+it.each([
+  ['mão ausente', [[1260, false]], 1680],
+  [
+    'dois quadros incertos',
+    [
+      [1260, true],
+      [1680, true],
+    ],
+    2100,
+  ],
+  ['Worker interrompido', [[1260, true]], 2100],
+] as const)('reinicia a confirmação com %s', (_reason, missing, resumeAt) => {
+  const validator = new GestureValidation();
+  for (const time of [0, 420, 840]) validator.update(palm, 'idle', time, 420, true);
+  for (const [time, detected] of missing) validator.update(null, 'idle', time, 420, true, detected);
+  expect(validator.update(palm, 'idle', resumeAt, 420, true)).toMatchObject({
+    command: null,
+    progress: 0,
+  });
+});
+
 it.each([100, 200])('confirma com amostras de %i ms e rejeita interrupções longas', (period) => {
   const validation = new GestureValidation();
   validation.update(palm, 'idle', 0, period);

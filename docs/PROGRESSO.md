@@ -181,3 +181,11 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Correção:** `PhotoReview.tsx` fornece as dimensões do arquivo a `PhotoPreview.tsx`. Em `styles.css`, o painel acompanha a proporção da fotografia em desktop e telas estreitas. Os PNGs, Canvas de composição e câmera permanecem com o mesmo fluxo.
 - **Testes:** 90 testes passaram, assim como lint, typecheck, build e formatação. `PhotoCapture.test.tsx` verifica as dimensões e a proporção entregues à revisão. Em Chrome headless, o ensaio com uma foto pública e um padrão sintético em 4:3 e 16:9 verificou a proporção da prévia e os pixels do JPEG na abertura dos PNGs oficiais. Nenhuma dependência adicionada.
 - **Status:** atualização no [PR #14](https://github.com/Samuelnata2109/foto-autom-tica/pull/14), em `feature/06-adaptive-photo-frames`. A validação com o quadro específico do DroidCam relatado pelo usuário continua pendente.
+
+## 20/11/2026 — Etapa 07/12 — Cenários virtuais com IA
+
+- **Base:** `feature/07-virtual-backgrounds`, criada a partir de `develop` em `8a0bde1`, que contém os PRs #11, #12 e #14.
+- **Entrega:** escolha entre fundo original e quatro ilustrações, segmentação local após a captura, progresso e cancelamento, JPEG 0,95 com moldura adaptativa por cima. Falhas permitem confirmar ou repetir a foto com fundo original.
+- **Arquivos:** cabine, hooks de captura e gestos, serviço de molduras, serviço, worker e máscara de cenários, coordenação de visão, modelo e ilustrações locais, testes de captura e cenários. Usa o MediaPipe já instalado. O [guia da etapa](CENARIOS_VIRTUAIS.md) registra origem, licença e memória do modelo.
+- **Validação:** 98 testes passaram, além de lint, tipagem e build. No Chrome headless, o worker de produção segmentou um retrato público em 640 × 480 e 1920 × 1080, manteve as dimensões e sobrepôs a moldura. O ensaio completo levou 10,6 s e 8,2 s, respectivamente. As ilustrações foram exportadas como WebP após o Chrome rejeitar a decodificação do SVG no worker.
+- **Pendências:** validação física de bordas e fluidez, com webcam e DroidCam. A Etapa 08 depende de autorização.

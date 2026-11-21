@@ -20,28 +20,43 @@ function ratioOf(width: number, height: number): FrameRatio | null {
   return null;
 }
 
+export async function loadOfficialFrame(
+  width: number,
+  height: number,
+  signal?: AbortSignal,
+  resolveFrameUrl: (ratio: FrameRatio) => string | undefined = (ratio) => frames[framePaths[ratio]],
+): Promise<{ frame: 'applied'; bitmap: ImageBitmap } | { frame: 'missing' | 'unsupported' }> {
+  const ratio = ratioOf(width, height);
+  if (!ratio) return { frame: 'unsupported' };
+  const url = resolveFrameUrl(ratio);
+  if (!url) return { frame: 'missing' };
+  const timeout = AbortSignal.timeout(5000);
+  const response = await fetch(url, {
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  });
+  if (!response.ok) throw new Error('Não foi possível carregar a moldura oficial.');
+  const bitmap = await createImageBitmap(await response.blob());
+  if (ratioOf(bitmap.width, bitmap.height) !== ratio || signal?.aborted) {
+    bitmap.close();
+    signal?.throwIfAborted();
+    throw new Error('A proporção da moldura oficial não corresponde à da foto.');
+  }
+  return { frame: 'applied', bitmap };
+}
+
 export async function composePhoto(
   original: CapturedPhoto,
   signal: AbortSignal,
-  resolveFrameUrl: (ratio: FrameRatio) => string | undefined = (ratio) => frames[framePaths[ratio]],
+  resolveFrameUrl?: (ratio: FrameRatio) => string | undefined,
 ): Promise<CompositionResult> {
   const { width, height } = original;
-  const ratio = ratioOf(width, height);
-  if (!ratio) return { frame: 'unsupported' };
-  const frameUrl = resolveFrameUrl(ratio);
-  if (!frameUrl) return { frame: 'missing' };
   let frame: ImageBitmap | undefined;
   let photo: ImageBitmap | undefined;
   let canvas: HTMLCanvasElement | undefined;
   try {
-    const response = await fetch(frameUrl, {
-      signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
-    });
-    if (!response.ok) throw new Error('Não foi possível carregar a moldura oficial.');
-    frame = await createImageBitmap(await response.blob());
-    if (ratioOf(frame.width, frame.height) !== ratio) {
-      throw new Error('A proporção da moldura oficial não corresponde à da foto.');
-    }
+    const layer = await loadOfficialFrame(width, height, signal, resolveFrameUrl);
+    if (layer.frame !== 'applied') return layer;
+    frame = layer.bitmap;
     signal.throwIfAborted();
     photo = await createImageBitmap(original.blob);
     signal.throwIfAborted();

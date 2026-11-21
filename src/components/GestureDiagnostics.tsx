@@ -99,6 +99,8 @@ export function GestureDiagnostics({
           <p>
             Modelo: {d?.raw ?? '—'} · confiança {d?.rawScore?.toFixed(2) ?? '—'} · geometria:{' '}
             {d?.geometry ?? '—'}
+            {d?.geometrySource === 'world' && ' (3D)'}
+            {d?.geometrySource === 'image' && ' (imagem)'}
           </p>
           <p>
             Validado: {s?.validated ?? '—'} · estabilidade {s?.stable ?? 0} ms

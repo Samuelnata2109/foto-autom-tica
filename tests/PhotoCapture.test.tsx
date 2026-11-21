@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import { captureFrame } from '../src/services/photoCapture';
 import * as composition from '../src/services/photoComposition';
+import * as backgrounds from '../src/services/virtualBackground';
 import * as recognition from '../src/hooks/useGestureRecognition';
 import type { GestureCommand } from '../src/types/gesture';
 
@@ -21,7 +22,7 @@ let stream: MediaStream;
 let connect: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  vi.spyOn(composition, 'composePhoto').mockResolvedValue(null);
+  vi.spyOn(composition, 'composePhoto').mockResolvedValue({ frame: 'missing' });
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
@@ -100,6 +101,75 @@ async function advance(milliseconds: number) {
 }
 
 describe('Sistema fotográfico', () => {
+  it.each([
+    [640, 480],
+    [1920, 1080],
+  ])('aplica o cenário escolhido na captura %i × %i', async (width, height) => {
+    const final = new Blob(['composite'], { type: 'image/jpeg' });
+    const replace = vi.spyOn(backgrounds, 'replaceBackground').mockResolvedValue({
+      photo: { blob: final, width, height },
+      frame: 'applied',
+    });
+    await open({ width, height });
+    const picker = get<HTMLSelectElement>('#booth-scenario');
+    expect(Array.from(picker.options, (option) => option.value)).toEqual([
+      'original',
+      'ai-lab',
+      'data-center',
+      'neural-networks',
+      'robotics',
+    ]);
+    await act(async () => {
+      picker.value = 'robotics';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await press('.shutter');
+    expect(picker.disabled).toBe(true);
+    await advance(4999);
+    expect(replace).not.toHaveBeenCalled();
+    await advance(1);
+    expect(replace).toHaveBeenCalledExactlyOnceWith(
+      { blob: jpeg, width, height },
+      'robotics',
+      expect.any(AbortSignal),
+      expect.any(Function),
+    );
+    expect(composition.composePhoto).not.toHaveBeenCalled();
+    expect(createUrl).toHaveBeenCalledExactlyOnceWith(final);
+    await press('.photo-review button:last-child');
+    expect(get('.photo-review [role=status]').textContent).toContain('Foto confirmada');
+    await press('.photo-review button:first-child');
+    expect(revokeUrl).toHaveBeenCalledOnce();
+  });
+
+  it.each(['cancelado', 'falha'])('mantém a captura utilizável com o cenário %s', async (mode) => {
+    vi.spyOn(backgrounds, 'replaceBackground').mockImplementation(
+      (_photo, _scenario, signal, onProgress) => {
+        onProgress('segmenting');
+        if (mode === 'falha') return Promise.reject(new Error('Modelo indisponível'));
+        return new Promise((_, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+        });
+      },
+    );
+    await open();
+    await act(async () => {
+      const picker = get<HTMLSelectElement>('#booth-scenario');
+      picker.value = 'ai-lab';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await press('.shutter');
+    await advance(5000);
+    if (mode === 'cancelado') {
+      expect(host.textContent).toContain('Separando a pessoa');
+      await press('.preview-actions button');
+    }
+    expect(host.textContent).toContain('A foto está com o fundo original');
+    expect(composition.composePhoto).toHaveBeenCalledOnce();
+    expect(createUrl).toHaveBeenCalledExactlyOnceWith(jpeg);
+    await press('.photo-review button:last-child');
+    expect(get('.photo-review [role=status]').textContent).toContain('Foto confirmada');
+  });
   it.each([5, 10])('captura JPEG uma única vez ao final de %i segundos', async (duration) => {
     const video = await open();
     if (duration === 10) await press('.timer-option:last-child input');
@@ -156,12 +226,14 @@ describe('Sistema fotográfico', () => {
     expect(track.stop).toHaveBeenCalledOnce();
   });
 
-  it('revisa o JPEG composto e confirma pelo comando emitido para Thumb_Up', async () => {
+  it.each([
+    [1920, 1080, 'Thumb_Up'],
+    [640, 480, 'botão'],
+  ])('revisa o JPEG %i × %i, confirma por %s e permite repetir', async (width, height, method) => {
     const composed = new Blob(['composed'], { type: 'image/jpeg' });
     vi.spyOn(composition, 'composePhoto').mockResolvedValue({
-      blob: composed,
-      width: 1920,
-      height: 1080,
+      frame: 'applied',
+      photo: { blob: composed, width, height },
     });
     const useRecognition = recognition.useGestureRecognition;
     let confirmByGesture: ((command: GestureCommand) => void) | undefined;
@@ -169,17 +241,40 @@ describe('Sistema fotográfico', () => {
       if (args[3] === 'review') confirmByGesture = args[4];
       return useRecognition(...args);
     });
-    await open();
+    await open({ width, height });
     await press('.shutter');
     await advance(5000);
     expect(createUrl).toHaveBeenCalledExactlyOnceWith(composed);
     expect(get('.photo-review').textContent).toContain('Moldura oficial aplicada');
-    expect(confirmByGesture).toBeDefined();
-    await act(async () => confirmByGesture?.('confirm'));
+    expect(get('.photo-review__details').textContent).toContain(`${width} × ${height}`);
+    const preview = get('.photo-preview--filled');
+    const image = get<HTMLImageElement>('.photo-preview--filled img');
+    expect(preview.style.getPropertyValue('--photo-ratio')).toBe(String(width / height));
+    expect([image.width, image.height]).toEqual([width, height]);
+    expect(composition.composePhoto).toHaveBeenCalledExactlyOnceWith(
+      { blob: jpeg, width, height },
+      expect.any(AbortSignal),
+    );
+    if (method === 'Thumb_Up') {
+      expect(confirmByGesture).toBeDefined();
+      await act(async () => confirmByGesture?.('confirm'));
+    } else {
+      await press('.photo-review button:last-child');
+    }
     expect(get('.photo-review [role=status]').textContent).toContain('Foto confirmada');
     await press('.photo-review button:first-child');
     expect(revokeUrl).toHaveBeenCalledExactlyOnceWith('blob:foto-da-cabine');
     expect(connect).toHaveBeenCalledOnce();
+  });
+
+  it('avisa e mantém as dimensões do JPEG original em uma captura vertical', async () => {
+    vi.spyOn(composition, 'composePhoto').mockResolvedValue({ frame: 'unsupported' });
+    await open({ width: 1080, height: 1920 });
+    await press('.shutter');
+    await advance(5000);
+    expect(createUrl).toHaveBeenCalledExactlyOnceWith(jpeg);
+    expect(get('.photo-review__details').textContent).toContain('1080 × 1920');
+    expect(get('.photo-review').textContent).toContain('Sem moldura oficial para esta proporção');
   });
 
   it('mantém a foto original confirmável se a aplicação da moldura falhar', async () => {

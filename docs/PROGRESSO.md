@@ -165,3 +165,59 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Testes automatizados:** 81 passaram com `npm run test -- --maxWorkers=1 --pool=threads`, incluindo prazos, descarte, pausa adaptativa, retomada, limpeza, botões manuais e os quatro comandos de gesto.
 - **Verificações:** lint, typecheck, build e formatação aprovados. O PNG no build manteve o SHA-256 original. Em Chrome headless com a imagem pública de polegar, o worker do build levou 892 ms na primeira inferência e 291–366 ms nas seguintes. A preparação levou 3–10 ms. Este ensaio não mede FPS do DroidCam.
 - **Pendências:** medir com webcam e DroidCam, comparar fluidez com IA ligada e desligada e validar gestos, botões e revisão da foto. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.
+
+### 21/11/2026 — Tolerância e tempo de confirmação dos gestos
+
+- **Status** em revisão, com homologação física pendente. Branch `fix/gesture-recognition-tolerance` baseada em `develop`.
+- **Mudanças** nos limiares geométricos e de confiança de cada gesto, com histerese, liberação observada antes de um novo comando e feedback de detecção, confirmação e execução no guia da cabine.
+- **Arquivos** de calibração, geometria, votação, validação, reconhecedor e hook de gestos, guia e revisão da foto, testes e [roteiro de reconhecimento](RECONHECIMENTO_GESTOS.md). Nenhuma dependência nova.
+- **Verificações** de lint, tipagem, build e formatação nos arquivos alterados. Os 106 testes passaram com `npm run test -- --pool=forks --maxWorkers=1`, incluindo landmarks sintéticos, liberação do gesto, feedback e regressões da cabine.
+- **Próxima validação** mede precisão e latência na webcam e no DroidCam, com o roteiro do guia de reconhecimento. O commit e o PR constam no relatório de entrega.
+
+## 20/11/2026 — Etapa 06/12 — Molduras adaptativas
+
+- **Base:** `feature/06-adaptive-photo-frames` parte de `develop` em `8434474`, que já contém os PRs #11 e #12.
+- **Entrega:** seleção da arte 16:9 ou 4:3 pelas dimensões da captura, sobreposição proporcional em Canvas e JPEG 0,95 nas dimensões originais. Formatos sem arte correspondente mantêm o JPEG original com aviso. A regra roda somente após a captura.
+- **Arquivos:** `photoComposition.ts`, `usePhotoCapture.ts`, `photo.ts`, `PhotoReview.tsx`, testes de composição e captura, PNG 4:3 e documentação. Nenhuma dependência adicionada.
+- **Arte 4:3:** 640 × 480, hash idêntico ao arquivo fornecido. A amostra central de 100 × 100 pixels contém 9.393 pixels com alfa 0 e 607 com alfa 1 de 255.
+- **Verificação:** 90 testes passaram com `npm run test -- --maxWorkers=1 --pool=threads`, incluindo seleção, ausência e falha de arte, proporções sem moldura, confirmação e repetição. Em Chrome headless, o JPEG composto preservou as dimensões e os pixels de referência do original na abertura central em 1920 × 1080, 640 × 480 e 1280 × 960. O teste também conferiu a arte incorporada na borda.
+- **Pendências:** validar com as duas câmeras no equipamento do evento. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.
+
+## 20/11/2026 — Etapa 06/12 — Enquadramento da revisão
+
+- **Defeito reproduzido:** o painel de revisão limitava sua altura enquanto a foto continuava dimensionada pela largura, podendo ultrapassar a área visível. As faixas laterais relatadas não apareceram no ensaio controlado.
+- **Correção:** `PhotoReview.tsx` fornece as dimensões do arquivo a `PhotoPreview.tsx`. Em `styles.css`, o painel acompanha a proporção da fotografia em desktop e telas estreitas. Os PNGs, Canvas de composição e câmera permanecem com o mesmo fluxo.
+- **Testes:** 90 testes passaram, assim como lint, typecheck, build e formatação. `PhotoCapture.test.tsx` verifica as dimensões e a proporção entregues à revisão. Em Chrome headless, o ensaio com uma foto pública e um padrão sintético em 4:3 e 16:9 verificou a proporção da prévia e os pixels do JPEG na abertura dos PNGs oficiais. Nenhuma dependência adicionada.
+- **Status:** atualização no [PR #14](https://github.com/Samuelnata2109/foto-autom-tica/pull/14), em `feature/06-adaptive-photo-frames`. A validação com o quadro específico do DroidCam relatado pelo usuário continua pendente.
+
+## 20/11/2026 — Etapa 07/12 — Cenários virtuais com IA
+
+- **Base:** `feature/07-virtual-backgrounds`, criada a partir de `develop` em `8a0bde1`, que contém os PRs #11, #12 e #14.
+- **Entrega:** escolha entre fundo original e quatro ilustrações, segmentação local após a captura, progresso e cancelamento, JPEG 0,95 com moldura adaptativa por cima. Falhas permitem confirmar ou repetir a foto com fundo original.
+- **Arquivos:** cabine, hooks de captura e gestos, serviço de molduras, serviço, worker e máscara de cenários, coordenação de visão, modelo e ilustrações locais, testes de captura e cenários. Usa o MediaPipe já instalado. O [guia da etapa](CENARIOS_VIRTUAIS.md) registra origem, licença e memória do modelo.
+- **Validação:** 98 testes passaram, além de lint, tipagem e build. No Chrome headless, o worker de produção segmentou um retrato público em 640 × 480 e 1920 × 1080, manteve as dimensões e sobrepôs a moldura. O ensaio completo levou 10,6 s e 8,2 s, respectivamente. As ilustrações foram exportadas como WebP após o Chrome rejeitar a decodificação do SVG no worker.
+- **Pendências:** validação física de bordas e fluidez, com webcam e DroidCam. A Etapa 08 depende de autorização.
+
+## 21/11/2026 — Etapa 08/12 — Armazenamento privado e retenção
+
+- **Base:** `feature/08-backend-storage`, criada a partir de `develop` em `9581d0b`, após o merge do PR #15.
+- **Entrega:** consentimento de armazenamento separado da confirmação, Auth de operador com prova por sessão, migrations para o bucket privado, fotos, limites e leases, Edge Functions de foto e limpeza, revogação de leitura após 24 horas e remoção manual ou por Cron. O fluxo local permanece disponível.
+- **Arquivos:** `supabase/migrations/`, `supabase/functions/`, `supabase/tests/`, serviço e componente de armazenamento, integração na cabine, variáveis públicas de exemplo, testes Vitest, roteiro de integração e [documentação operacional](ARMAZENAMENTO_PRIVADO.md). Nenhuma dependência de produção adicionada.
+- **Verificado no banco:** asserções em PostgreSQL/WASM com metadados de Storage simulados. Cobrem prazo do servidor, autorização, isolamento, claims concorrentes, repetição e órfãos.
+- **Verificações:** 108 testes passaram, junto de lint, tipagem, build e formatação. O intervalo do Cron e a chamada montada para pg_net foram conferidos com extensões simuladas no PostgreSQL. O processo real do Cron e a remoção física não foram executados nessa verificação.
+- **Pendências de homologação:** as migrations e funções ainda precisam ser aplicadas ao projeto Supabase. O teste integrado não pôde iniciar porque a CLI do Supabase não está instalada neste ambiente. Ativar os segredos de Cron e confirmar a exclusão de arquivo e metadados no Storage real antes do evento. PR e commit no relatório de entrega. A Etapa 09 depende de autorização.
+
+### 21/11/2026 — Convite e recuperação de senha da equipe
+
+- **Causa:** a cabine só implementava login por senha. O roteador por fragmento tratava o retorno do e-mail como navegação e levava à tela inicial.
+- **Correção:** interpretar e limpar o retorno antes do roteador. O SDK oficial `@supabase/auth-js` valida a sessão de convite ou recuperação e atualiza a senha. O login da equipe usa a mesma integração, com a verificação de operador já existente.
+- **Validação:** lint, tipagem e build passaram. A suíte passou com 116 testes em 11 arquivos usando `--pool=forks --maxWorkers=1`, incluindo oito testes novos de links, sessão e formulário. A execução anterior com threads teve dois timeouts de inicialização de workers do Vitest.
+- **Pendência de homologação:** validar no navegador um novo convite e uma nova recuperação com e-mails reais. O [guia de armazenamento](ARMAZENAMENTO_PRIVADO.md) registra Site URL, Redirect URLs e o roteiro de validação. Correção na branch `feature/08-backend-storage`, no PR #16.
+
+### 21/11/2026 — Continuidade da confirmação dos gestos
+
+- **Base** `develop` com os PRs #16 e #17 integrados. Branch `fix/gesture-confirmation-stability` para a correção.
+- **Causa** na frequência reduzida, uma única amostra incerta pode separar dois resultados válidos por mais de 750 ms mesmo com a mão à vista. A geometria inconclusiva em 3D também deixava de aproveitar os pontos normalizados disponíveis no quadro.
+- **Mudanças** recuperação de uma amostra incerta sem contabilizar a pausa, verificação complementar com a geometria do quadro e indicação de bloqueios no guia. Configuração, serviços, hook, componentes, testes e [roteiro de reconhecimento](RECONHECIMENTO_GESTOS.md) atualizados. Nenhuma dependência nova.
+- **Verificações** lint, tipagem, build e formatação aprovados. Os 130 testes passaram com `npm run test -- --pool=forks --maxWorkers=1`. Os seis novos casos cobrem projeções em 4:3 e 16:9 e amostras intermitentes. O commit e o PR constam no relatório de entrega.
+- **Pendência** medição de precisão, latência e fluidez com webcam e DroidCam. O reconhecimento processa uma mão por vez.

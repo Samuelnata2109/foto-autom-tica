@@ -12,7 +12,7 @@
 
 O participante ativa a IA após abrir a câmera. O hook reutiliza o `HTMLVideoElement` e o `MediaStream` já abertos. O worker recebe um `ImageBitmap` proporcional de até 320 px de largura e analisa no máximo uma mão com CPU/WASM. Quadros novos são amostrados conforme a carga, com teto de 10 Hz e uma inferência pendente. Em caso de falha, a cabine suspende a IA e mantém os controles manuais. A configuração vigente e as medições estão no fim deste documento.
 
-`src/config/gestureConfig.ts` concentra confiança mínima 0,80, confirmação estável por 2 s, tolerância de 180 ms a perda momentânea e intervalo de 2 s entre comandos. O tempo vem de `performance.now()`, sem supor frequência fixa de quadros. A perda de estabilidade ou troca de gesto reinicia a confirmação; o mesmo gesto deve ser liberado ou trocado para repetir. A mudança de estado limpa o progresso. Estados permitidos: `idle` para palma aberta (5 s) e paz (10 s), `countdown` para punho fechado (cancelar), `review` para polegar para cima (confirmar). `capturing` e `confirmed` não aceitam comandos.
+`src/config/gestureConfig.ts` concentra os limiares, os tempos de confirmação e as tolerâncias descritos na configuração vigente no fim deste documento. O tempo vem de `performance.now()`, sem supor frequência fixa de quadros. Trocas de gesto, de estado e perdas de estabilidade prolongadas reiniciam a confirmação. Estados permitidos: `idle` para palma aberta (5 s) e paz (10 s), `countdown` para punho fechado (cancelar), `review` para polegar para cima (confirmar). `capturing` e `confirmed` não aceitam comandos.
 
 A inferência é suspensa quando a IA está desligada, a câmera indisponível, a página oculta, o usuário sai da cabine ou o estado não permite comandos. Ao sair, o worker/modelo é encerrado. Quadros usados para inferência não são armazenados ou transmitidos. O JPEG continua na resolução original da câmera.
 
@@ -21,7 +21,7 @@ A inferência é suspensa quando a IA está desligada, a câmera indisponível, 
 Com webcam integrada e DroidCam via Wi-Fi, em `localhost` ou HTTPS:
 
 1. Iniciar a cabine, ativar a IA e confirmar carregamento local do modelo e WASM no navegador.
-2. Testar cada gesto por 2 s, gestos desconhecidos, baixa iluminação, mãos múltiplas e distâncias de evento.
+2. Testar cada gesto pela duração da configuração vigente, além de gestos desconhecidos, baixa iluminação, mãos múltiplas e distâncias de evento.
 3. Verificar cancelamento na contagem e confirmação na revisão, sem tocar no computador; verificar que manter um gesto não repete comando.
 4. Trocar e desconectar a câmera, desligar a IA, ocultar a aba e sair da cabine durante carregamento/inferência.
 5. Comparar fluidez e latência do vídeo com IA ligada/desligada, observar CPU e memória por período prolongado. Se a IA suspender, conferir a fluidez e a retomada manual.
@@ -65,7 +65,7 @@ Execute `npm run dev` (e `npm run setup:gesture-model` caso o modelo local estej
 
 Desative a observação para testar ações: palma → 5 s; paz → 10 s; punho estável por pelo menos 800 ms durante a contagem → cancelar (inclusive logo após iniciar por gesto); polegar por 2 s na revisão → confirmar. O atraso até a próxima amostra depende da frequência real. Confira também punho breve, mão relaxada, dedos parcialmente abertos, ausência de mão e pausas: não devem disparar comandos. Repita mantendo o gesto após a ação e com IA desligada/reativada. Registre frequência, estabilidade, motivo de bloqueio e comando executado. A aprovação física dos quatro gestos é necessária para encerrar a Etapa 05.
 
-## Proteção da prévia e medições — configuração vigente
+## Proteção da prévia e medições
 
 O relato com DroidCam registrou prévia fluida com a IA desligada e travamentos após `Tempo limite de inferência`, com backend `CPU na thread principal`. O código anterior executava `recognizeForVideo` de forma síncrona na interface depois do timeout. Esse caminho pode bloquear a renderização mesmo com limite de 5 Hz. O timeout antigo iniciava após transferir o bitmap e media todo o percurso até a resposta, incluindo execução e entrega. Ele não distinguia o cálculo do modelo da espera por mensagens. O ensaio histórico de 5,9–8,0 s no primeiro quadro com mão indica que 3 s podem ser insuficientes durante o aquecimento. O relato físico ainda não permite determinar qual fase excedeu o limite. Consulte a [documentação do Gesture Recognizer](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer?tab=Web).
 
@@ -78,3 +78,32 @@ O relato com DroidCam registrou prévia fluida com a IA desligada e travamentos 
 No Chrome headless, o worker do build classificou quatro quadros derivados da imagem pública [thumb_up.jpg](https://storage.googleapis.com/mediapipe-assets/thumb_up.jpg) como `Thumb_Up`. Inicializou em 13,16 s, com preparação de 3–10 ms e sinal de início recebido em 1–6 ms após o envio. A primeira inferência levou 892 ms e as três seguintes levaram 291–366 ms. O ensaio isolou o worker com uma imagem estática. O registro histórico de 5,9–8,0 s veio de outra execução sob carga, sem comparação controlada.
 
 Para comparar no equipamento do evento, mantenha a mesma câmera, resolução e iluminação. Deixe os pontos da mão desligados, abra o painel e anote os FPS de prévia em três janelas de 20 s: IA desligada, IA ligada em regime e IA desligada novamente. Compare webcam e DroidCam. Registre as configurações da faixa, média e máximo da inferência, tempo de preparação, frequência da IA e eventuais falhas. Repita palma, paz, punho e polegar, teste a retomada após falha e confira os controles manuais e o JPEG com a moldura oficial. Nenhuma medição física posterior foi concluída nesta correção.
+
+## Tolerância e tempo de confirmação — configuração vigente
+
+A verificação anterior já usava landmarks 3D, mas exigia ângulo e alcance estritos nos quatro dedos. Quando um dedo levemente curvado deixava a geometria inconclusiva, o escore mínimo voltava a 0,80. Se o modelo alternasse entre escores altos e baixos, a confirmação podia pausar repetidamente, sobretudo com amostras espaçadas.
+
+| Gesto             | Confiança com geometria compatível | Confirmação mínima | Comando                    |
+| ----------------- | ---------------------------------: | -----------------: | -------------------------- |
+| Palma aberta      |                               0,68 |              1,5 s | Inicia 5 s                 |
+| Sinal de paz      |                               0,68 |              1,5 s | Inicia 10 s                |
+| Punho fechado     |                               0,66 |              0,8 s | Cancela a contagem         |
+| Polegar para cima |                               0,65 |              1,5 s | Confirma a foto na revisão |
+
+- A extensão usa a razão entre o comprimento direto e o trajeto articulado do dedo. A palma aceita razão a partir de 0,86 nos quatro dedos. O sinal de paz exige 0,90 no indicador e no médio, separação mínima de 0,28 do tamanho estimado da palma e anelar e mínimo dobrados. O polegar exige os mesmos critérios de extensão da calibração anterior, com pelo menos três dedos dobrados e nenhum dos outros dedos estendido. Essas relações usam os pontos 3D, sem exigir posição na imagem, tamanho fixo da mão ou mão direita.
+- Sem apoio da geometria, vale o mínimo de 0,80. Conflitos entre a classe do modelo e a geometria são rejeitados. A histerese aceita até 0,04 a menos apenas para o mesmo gesto já reconhecido e com apoio geométrico. A votação conserva 60% de peso a favor do gesto da amostra atual e usa de 450 a 750 ms conforme a frequência. Aprovar exige pelo menos três amostras. Intervalos sem detecção não entram no tempo de confirmação.
+- O cooldown de 2 s continua valendo para início e confirmação. O punho pode cancelar durante esse intervalo. Um gesto mantém o bloqueio até haver pelo menos 300 ms entre observações consistentes de liberação ou troca de gesto. Um quadro incerto não rearma o comando.
+- A prévia usa o mesmo Worker CPU/WASM, com entrada de até 320 px, limite adaptativo de 10 Hz e um quadro em processamento. A IA acompanha uma mão por vez. O espelhamento visual da câmera não modifica a entrada do modelo.
+
+### Roteiro de validação física
+
+Com `npm run dev`, ative a IA e selecione a webcam integrada. No painel de diagnóstico, habilite a observação sem comandos. Mostre cada gesto com cada mão, no centro e nas laterais, perto e longe, inclinado para os dois lados e com o espelhamento ligado e desligado. Confira a indicação de mão detectada, a classe e a frequência do Worker. Repita com o DroidCam nas condições de iluminação do evento.
+
+Desligue a observação e execute os quatro comandos nas fases indicadas. Verifique o indicador de progresso e a mensagem após a ação. Mantenha o gesto alguns segundos e confira que dispara apenas uma vez. Ao deixar a mão cair, acenar, apontar ou alternar rapidamente entre palma e paz, confira que a captura não inicia. Compare a latência e os FPS da prévia com a mesma câmera, distância e iluminação. Os testes sintéticos exercitam a geometria e a confirmação. A precisão do modelo em vídeo e a fluidez com cada câmera exigem esse ensaio.
+
+### Continuidade com classificações intermitentes
+
+- A calibração usa primeiro a geometria 3D. Quando ela fica inconclusiva, os pontos do quadro podem corroborar a mesma classe oficial com confiança de pelo menos **0,74**. Os eixos da imagem são convertidos para a mesma unidade com a proporção real do quadro de inferência. A geometria 3D conclusiva conserva a prioridade, inclusive quando contradiz a classe oficial. [Saída do MediaPipe Gesture Recognizer](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer?tab=Web#task-output)
+- A confirmação pode preservar o progresso por uma única amostra incerta quando a mão segue visível. Os dois intervalos vizinhos precisam estar dentro da cadência esperada e do teto de **750 ms por intervalo**. O tempo entre a última amostra aceita e a retomada fica fora da confirmação. A primeira amostra após uma pausa apenas retoma a verificação. Pausas prolongadas seguem reiniciando a confirmação.
+- Exemplo sintético com amostras a cada 420 ms: a cabine já acumulou 840 ms quando uma classificação incerta chega em 1.260 ms. A classificação aceita de 1.680 ms preserva os 840 ms, e a ação ocorre em 2.520 ms, após acumular 1.680 ms de estabilidade observada. Os tempos de 1,5 s e 800 ms, as fases e o cooldown continuam valendo.
+- Durante o teste físico, confira no guia se aparece **Observação ativa · comandos pausados**. No diagnóstico, compare **geometria (3D)** e **geometria (imagem)** ao mudar de posição. Teste também uma pequena rotação sem retirar a mão do enquadramento e verifique se o progresso retoma com segurança. Comandos continuam bloqueados na fase incorreta e a mão permanece limitada a uma por vez.

@@ -9,5 +9,6 @@ export type CapturedPhoto = {
 export type SessionPhoto = CapturedPhoto & {
   url: string;
   original: CapturedPhoto;
-  frame: 'applied' | 'missing' | 'failed';
+  frame: 'applied' | 'missing' | 'unsupported' | 'failed';
+  scenarioId?: string;
 };

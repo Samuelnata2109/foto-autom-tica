@@ -11,16 +11,27 @@ import { GestureDiagnostics } from '../components/GestureDiagnostics';
 import { GestureGuide } from '../components/GestureGuide';
 import { EmptyState } from '../components/EmptyState';
 import { PhotoReview } from '../components/PhotoReview';
+import { PhotoStorageConsent, StorageOperator } from '../components/PhotoStorageConsent';
 import { useCamera } from '../hooks/useCamera';
 import { useGestureRecognition } from '../hooks/useGestureRecognition';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { cameraMessages } from '../services/camera';
 import type { TimerDuration } from '../types/photo';
+import { scenarios, type Scenario } from '../services/virtualBackground';
+import { storageConfigured } from '../services/privatePhotoStorage';
+
+const backgroundStatus = {
+  loading: 'Preparando o modelo de cenário…',
+  segmenting: 'Separando a pessoa do fundo…',
+  composing: 'Compondo a fotografia…',
+};
 
 export function BoothPage() {
   const camera = useCamera();
   const { status } = camera;
   const [duration, setDuration] = useState<TimerDuration>(5);
+  const [scenario, setScenario] = useState<Scenario>('original');
+  const [operatorToken, setOperatorToken] = useState<string | null>(null);
   const ready = status === 'active' && Boolean(camera.settings.width && camera.settings.height);
   const capture = usePhotoCapture(camera.videoRef, camera.stream, ready);
   const { state, countdown, error } = capture;
@@ -30,8 +41,8 @@ export function BoothPage() {
     ready,
     state.phase,
     (command) => {
-      if (command === 'start5') capture.start(5);
-      if (command === 'start10') capture.start(10);
+      if (command === 'start5') capture.start(5, scenario);
+      if (command === 'start10') capture.start(10, scenario);
       if (command === 'cancel') capture.cancel();
       if (command === 'confirm') capture.confirm();
     },
@@ -58,6 +69,7 @@ export function BoothPage() {
           <CameraStatus status={status} />
         </div>
         <div className="booth-photo-area">
+          {reviewing && capture.backgroundNote && <p role="status">{capture.backgroundNote}</p>}
           {reviewing && 'photo' in state && (
             <PhotoReview
               photo={state.photo}
@@ -66,6 +78,9 @@ export function BoothPage() {
               onConfirm={capture.confirm}
               gestureActive={recognition.enabled && recognition.status === 'active'}
             />
+          )}
+          {storageConfigured && state.phase === 'confirmed' && (
+            <PhotoStorageConsent key={state.photo.url} photo={state.photo} token={operatorToken} />
           )}
           <div className="booth-grid" data-reviewing={reviewing}>
             <div className="booth-stage booth-stage--camera">
@@ -138,10 +153,38 @@ export function BoothPage() {
               />
               {!reviewing && <CameraControls camera={camera} locked={busy} />}
               {!reviewing && (
+                <div className="camera-controls">
+                  <label htmlFor="booth-scenario">Cenário da foto</label>
+                  <select
+                    id="booth-scenario"
+                    disabled={busy}
+                    value={scenario}
+                    onChange={(event) => {
+                      const selected = scenarios.find(({ id }) => id === event.currentTarget.value);
+                      if (selected) setScenario(selected.id);
+                    }}
+                  >
+                    {scenarios.map(({ id, label }) => (
+                      <option key={id} value={id}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {capture.backgroundProgress && (
+                <div className="preview-actions">
+                  <p role="status">{backgroundStatus[capture.backgroundProgress]}</p>
+                  <Button variant="secondary" onClick={capture.skipBackground}>
+                    Continuar com o fundo original
+                  </Button>
+                </div>
+              )}
+              {!reviewing && (
                 <CaptureControls
                   duration={duration}
                   onDurationChange={setDuration}
-                  onCapture={() => capture.start(duration)}
+                  onCapture={() => capture.start(duration, scenario)}
                   ready={ready}
                   busy={busy}
                   shutterRef={shutter}
@@ -162,6 +205,7 @@ export function BoothPage() {
             <div className="capture-flash" aria-hidden="true" />
           )}
         </div>
+        {storageConfigured && <StorageOperator token={operatorToken} onToken={setOperatorToken} />}
         {import.meta.env.DEV && !busy && !reviewing && (
           <Link className="preview-link" to="/previa/contagem">
             Prévias de desenvolvimento

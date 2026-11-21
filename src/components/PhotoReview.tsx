@@ -1,9 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { gestureConfig } from '../config/gestureConfig';
 import type { SessionPhoto } from '../types/photo';
 import { useEntranceAnimation } from '../hooks/useEntranceAnimation';
 import { Button } from './Button';
 import { PhotoPreview } from './PhotoPreview';
+
+const frameMessage: Record<SessionPhoto['frame'], string> = {
+  applied: 'Moldura oficial aplicada.',
+  missing: 'Moldura oficial indisponível. Exibindo a foto original.',
+  unsupported: 'Sem moldura oficial para esta proporção. Exibindo a foto original.',
+  failed: 'Falha ao aplicar a moldura. Exibindo a foto original.',
+};
 
 export function PhotoReview({
   photo,
@@ -31,7 +39,14 @@ export function PhotoReview({
       <h2 ref={heading} tabIndex={-1}>
         Revisão da foto
       </h2>
-      <PhotoPreview photo={{ src: photo.url, alt: 'Fotografia capturada na cabine' }} />
+      <PhotoPreview
+        photo={{
+          src: photo.url,
+          alt: 'Fotografia capturada na cabine',
+          width: photo.width,
+          height: photo.height,
+        }}
+      />
       <p className="photo-review__details">
         {photo.width} × {photo.height} · JPEG
       </p>
@@ -46,15 +61,12 @@ export function PhotoReview({
           <Check size={18} aria-hidden="true" /> Confirmar foto
         </Button>
       </div>
-      <p id="editing-availability">
-        {photo.frame === 'applied'
-          ? 'Moldura oficial aplicada.'
-          : photo.frame === 'missing'
-            ? 'Moldura oficial indisponível. Exibindo a foto original.'
-            : 'Falha ao aplicar a moldura. Exibindo a foto original.'}
-      </p>
+      <p id="editing-availability">{frameMessage[photo.frame]}</p>
       {!confirmed && gestureActive && (
-        <p>Mostre o polegar para cima por 2 segundos para confirmar a foto.</p>
+        <p>
+          Mostre o polegar para cima por{' '}
+          {(gestureConfig.confirmationMs / 1000).toLocaleString('pt-BR')} s para confirmar a foto.
+        </p>
       )}
       {confirmed && (
         <p ref={confirmation} tabIndex={-1} role="status">

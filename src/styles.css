@@ -743,6 +743,17 @@
   color: var(--color-booth-text);
 }
 
+.password-form {
+  display: grid;
+  gap: var(--space-2);
+  width: min(100%, 30rem);
+  justify-items: start;
+}
+
+.password-form label {
+  width: 100%;
+}
+
 .camera-controls__mirror {
   display: inline-flex;
   align-items: center;

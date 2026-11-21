@@ -1,20 +1,7 @@
 import type { SessionPhoto } from '../types/photo';
+import { createAuthClient, supabaseConfig } from './supabaseAuth';
 
-const publishable = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-function storageUrl(value: string | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' ||
-      (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
-      ? url.origin
-      : null;
-  } catch {
-    return null;
-  }
-}
-const root = storageUrl(import.meta.env.VITE_SUPABASE_URL);
-export const storageConfigured = Boolean(root && publishable);
+export const storageConfigured = Boolean(supabaseConfig);
 
 export type PhotoAccess = { id: string; session: string; proof: string };
 
@@ -35,23 +22,17 @@ export class PhotoStorageError extends Error {
 }
 
 function credentials() {
-  if (!root || !publishable) throw new PhotoStorageError(503);
-  return { root, publishable };
+  if (!supabaseConfig) throw new PhotoStorageError(503);
+  return supabaseConfig;
 }
 
 export async function signInOperator(email: string, password: string, signal: AbortSignal) {
-  const config = credentials();
-  const response = await fetch(config.root + '/auth/v1/token?grant_type=password', {
-    method: 'POST',
-    headers: { apikey: config.publishable, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-    signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
-  });
-  if (!response.ok) throw new PhotoStorageError(response.status);
-  const data = (await response.json()) as { access_token?: string };
-  if (!data.access_token) throw new PhotoStorageError(401);
-  await callStorage(data.access_token, 'operator', {}, signal);
-  return data.access_token;
+  const auth = await createAuthClient(signal);
+  const { data, error } = await auth.signInWithPassword({ email, password });
+  if (error || !data.session) throw new PhotoStorageError(error?.status ?? 401);
+  const token = data.session.access_token;
+  await callStorage(token, 'operator', {}, signal);
+  return token;
 }
 
 async function callStorage(

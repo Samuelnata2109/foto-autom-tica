@@ -11,6 +11,18 @@ A confirmação da revisão mantém a foto local. O envio só acontece com **Aut
 5. Publique `booth-photos` e `booth-cleanup` com `supabase functions deploy booth-photos --no-verify-jwt` e `supabase functions deploy booth-cleanup --no-verify-jwt`. A primeira função verifica o JWT real com o Supabase Auth e a lista da equipe. A segunda autentica o token de limpeza. A chave pública sozinha não dá acesso.
 6. No Vault do projeto, crie `booth_project_url` com a URL HTTPS do Supabase e `booth_cleanup_token` com o mesmo valor do segredo da função. Verifique a execução agendada antes de coletar fotos. Novas reservas exigem limpeza bem-sucedida nos últimos 15 minutos.
 
+## Convite e recuperação de senha da equipe
+
+Em **Authentication → URL Configuration**, configure a **Site URL** com o endereço real da cabine, incluindo a subpasta se houver. Exemplos: `https://cabine.exemplo.br/` ou `https://conta.github.io/foto-autom-tica/`. Em **Redirect URLs**, adicione os destinos permitidos, mantendo a subpasta e a barra final. Para desenvolvimento, inclua `http://localhost:5173/`. Se especificar um destino explícito para o fluxo de senha, adicione também o URL exato com `?auth=password`, por exemplo `http://localhost:5173/?auth=password`.
+
+Os templates padrão **Invite user** e **Reset password** podem usar `{{ .ConfirmationURL }}`. Envie um novo convite ou uma nova recuperação pelo painel, abra o e-mail em outro navegador ou janela privada e confira a tela de senha. Cadastre a senha e entre em **Acesso da equipe** na cabine. Apenas usuários cujos UUIDs estão em `BOOTH_OPERATOR_IDS` podem operar o armazenamento. Atualizar a senha não altera essa lista.
+
+A aplicação aceita os fragmentos de sessão padrão para `invite` e `recovery`, assim como links personalizados com `token_hash` e o `type` correspondente. Para templates personalizados, prefira o fragmento para manter a prova fora das requisições ao servidor que hospeda o site, por exemplo `{{ .SiteURL }}?auth=password#token_hash={{ .TokenHash }}&type=invite` ou `type=recovery`. A cabine usa o SDK oficial para validar o link e chamar `updateUser` com a sessão validada. Ela remove os campos de autenticação do endereço e mantém a sessão apenas em memória. O fluxo de e-mail configurado aqui não usa callbacks contendo apenas um código PKCE.
+
+Para validar erro, reabra um link já utilizado ou envie uma recuperação com o link vencido. A aplicação deve pedir um novo link, sem abrir o formulário. Confira também a confirmação de senha e o retorno à cabine.
+
+Referências: [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls) e [templates de e-mail](https://supabase.com/docs/guides/auth/auth-email-templates).
+
 ## Autorização, expiração e revogação
 
 As fotos só são tratadas pelo backend. A política restritiva do bucket veda acesso a `anon` e `authenticated`; as tabelas usam RLS e as RPCs são reservadas ao servidor. Cada operação usa JWT da equipe, identificador aleatório da captura, UUID de sessão e uma prova aleatória de 256 bits. O banco guarda apenas o hash da prova. Caminhos de arquivo são aleatórios e nunca reutilizados. O JPEG é limitado a 8 MiB, dimensões de até 8192 por lado e 16.777.216 pixels. O servidor confere a estrutura e lê as dimensões dos marcadores JPEG. Há limite de 30 novas reservas por operador por minuto.

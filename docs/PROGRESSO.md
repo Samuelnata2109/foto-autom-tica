@@ -198,3 +198,10 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Verificado no banco:** asserções em PostgreSQL/WASM com metadados de Storage simulados. Cobrem prazo do servidor, autorização, isolamento, claims concorrentes, repetição e órfãos.
 - **Verificações:** 108 testes passaram, junto de lint, tipagem, build e formatação. O intervalo do Cron e a chamada montada para pg_net foram conferidos com extensões simuladas no PostgreSQL. O processo real do Cron e a remoção física não foram executados nessa verificação.
 - **Pendências de homologação:** as migrations e funções ainda precisam ser aplicadas ao projeto Supabase. O teste integrado não pôde iniciar porque a CLI do Supabase não está instalada neste ambiente. Ativar os segredos de Cron e confirmar a exclusão de arquivo e metadados no Storage real antes do evento. PR e commit no relatório de entrega. A Etapa 09 depende de autorização.
+
+### 21/11/2026 — Convite e recuperação de senha da equipe
+
+- **Causa:** a cabine só implementava login por senha. O roteador por fragmento tratava o retorno do e-mail como navegação e levava à tela inicial.
+- **Correção:** interpretar e limpar o retorno antes do roteador. O SDK oficial `@supabase/auth-js` valida a sessão de convite ou recuperação e atualiza a senha. O login da equipe usa a mesma integração, com a verificação de operador já existente.
+- **Validação:** lint, tipagem e build passaram. A suíte passou com 116 testes em 11 arquivos usando `--pool=forks --maxWorkers=1`, incluindo oito testes novos de links, sessão e formulário. A execução anterior com threads teve dois timeouts de inicialização de workers do Vitest.
+- **Pendência de homologação:** validar no navegador um novo convite e uma nova recuperação com e-mails reais. O [guia de armazenamento](ARMAZENAMENTO_PRIVADO.md) registra Site URL, Redirect URLs e o roteiro de validação. Correção na branch `feature/08-backend-storage`, no PR #16.

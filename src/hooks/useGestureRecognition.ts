@@ -29,8 +29,12 @@ export function useGestureRecognition(
   const [status, setStatus] = useState<Status>('off');
   const [error, setError] = useState('');
   const [gesture, setGesture] = useState<GestureName | null>(null);
+  const [handDetected, setHandDetected] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [confirmed, setConfirmed] = useState<GestureName | null>(null);
+  const [feedback, setFeedback] = useState<{
+    gesture: GestureName;
+    command: GestureCommand;
+  } | null>(null);
   const [debug, setDebug] = useState(false);
   const [observe, setObserve] = useState(false);
   const [overlay, setOverlay] = useState(false);
@@ -82,9 +86,14 @@ export function useGestureRecognition(
     vote.reset();
     setSample(null);
     setGesture(null);
+    setHandDetected(false);
     setProgress(0);
-    setConfirmed(null);
   };
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(null), config.commandFeedbackMs);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
   useEffect(() => {
     epoch.current++;
     clearFeedback(true);
@@ -104,6 +113,7 @@ export function useGestureRecognition(
     setBackend('—');
     setWorkerError('');
     setLastCommand(null);
+    setFeedback(null);
     setPerformanceSample(null);
     clearFeedback();
     if (!enabled || !cameraReady || !stream) {
@@ -362,13 +372,15 @@ export function useGestureRecognition(
             } else if (valid(ticket) && cost > config.maximumSampleGapMs) {
               clearFeedback(true);
             } else if (valid(ticket)) {
-              const voted = vote.accept(message.detection, ticket.timestamp);
+              const detected = message.detection !== null;
+              const voted = vote.accept(message.detection, ticket.timestamp, acceptablePeriod);
               const result = validator.update(
                 voted,
                 ticket.phase,
                 ticket.timestamp,
                 acceptablePeriod,
                 true,
+                detected,
               );
               const showDetails =
                 latest.current.debug && (now === lastPublish || latest.current.overlay);
@@ -382,11 +394,12 @@ export function useGestureRecognition(
                   validated: voted ? result.gesture : null,
                 });
               }
-              setGesture(result.gesture);
+              setHandDetected(detected);
+              setGesture(detected ? result.gesture : null);
               setProgress(result.progress);
-              if (result.command && !latest.current.diagnosticOnly) {
+              if (result.command && result.gesture && !latest.current.diagnosticOnly) {
                 setLastCommand(result.command);
-                setConfirmed(result.gesture);
+                setFeedback({ gesture: result.gesture, command: result.command });
                 latest.current.onCommand(result.command);
               }
             }
@@ -432,8 +445,9 @@ export function useGestureRecognition(
     status,
     error,
     gesture,
+    handDetected,
     progress,
-    confirmed,
+    feedback,
     debug,
     setDebug,
     observe,

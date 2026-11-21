@@ -19,10 +19,11 @@ export function detectGesture(
 ): GestureDetection {
   const result = recognizer.recognizeForVideo(frame, timestamp);
   const category = result.gestures[0]?.[0];
-  if (!category && !result.landmarks[0]) return null;
+  const imageLandmarks = result.landmarks[0];
+  const landmarks = result.worldLandmarks[0] ?? [];
+  if (!imageLandmarks?.length && !landmarks.length) return null;
   const raw = category?.categoryName ?? 'None',
     rawScore = category?.score ?? 0;
-  const landmarks = result.worldLandmarks[0] ?? [];
   const metrics = raw === 'Thumb_Up' ? thumbMetrics(landmarks) : null;
   const geometry =
     raw === 'Thumb_Up' && supportsThumb(metrics) ? 'Thumb_Up' : handGeometry(landmarks);
@@ -35,6 +36,6 @@ export function detectGesture(
     rawScore,
     geometry,
     thumbMetrics: metrics,
-    points: overlay ? result.landmarks[0] : undefined,
+    points: overlay ? imageLandmarks : undefined,
   };
 }

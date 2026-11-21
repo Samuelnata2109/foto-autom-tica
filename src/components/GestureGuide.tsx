@@ -1,7 +1,7 @@
 import { Hand, ThumbsUp } from 'lucide-react';
 import { gestureLabels } from '../services/gestureValidation';
 import { gestureConfig } from '../config/gestureConfig';
-import type { GestureName, GesturePhase } from '../types/gesture';
+import type { GestureCommand, GestureName, GesturePhase } from '../types/gesture';
 import { Button } from './Button';
 
 function Peace() {
@@ -55,16 +55,25 @@ type Recognition = {
   workerError: string;
   retry: () => void;
   gesture: GestureName | null;
+  handDetected: boolean;
   progress: number;
-  confirmed: GestureName | null;
+  feedback: { gesture: GestureName; command: GestureCommand } | null;
 };
 
+const seconds = (ms: number) => (ms / 1000).toLocaleString('pt-BR');
 const guidance: Record<GesturePhase, string> = {
-  idle: 'Mostre a palma aberta ou o sinal de paz por 2 segundos.',
-  countdown: `Mantenha o punho fechado por ${(gestureConfig.cancelConfirmationMs / 1000).toLocaleString('pt-BR')} segundo para cancelar.`,
+  idle: `Mostre a palma aberta ou o sinal de paz por ${seconds(gestureConfig.confirmationMs)} s.`,
+  countdown: `Mantenha o punho fechado por ${seconds(gestureConfig.cancelConfirmationMs)} s para cancelar.`,
   capturing: 'Aguarde a captura.',
-  review: 'Mostre o polegar para cima por 2 segundos para confirmar.',
+  review: `Mostre o polegar para cima por ${seconds(gestureConfig.confirmationMs)} s para confirmar.`,
   confirmed: 'Foto confirmada. Use os controles manuais para repetir.',
+};
+
+const executed: Record<GestureCommand, { phase: GesturePhase; message: string }> = {
+  start5: { phase: 'countdown', message: 'Contagem de 5 s iniciada' },
+  start10: { phase: 'countdown', message: 'Contagem de 10 s iniciada' },
+  cancel: { phase: 'idle', message: 'Contagem cancelada' },
+  confirm: { phase: 'confirmed', message: 'Foto confirmada' },
 };
 
 export function GestureGuide({
@@ -74,6 +83,7 @@ export function GestureGuide({
   recognition: Recognition;
   phase: GesturePhase;
 }) {
+  const action = recognition.feedback && executed[recognition.feedback.command];
   return (
     <aside className="gesture-guide" aria-labelledby="gesture-heading">
       <h2 id="gesture-heading">Guia de gestos</h2>
@@ -100,18 +110,23 @@ export function GestureGuide({
       {recognition.status === 'active' && (
         <>
           <p>{guidance[phase]}</p>
-          <p className="gesture-detection">
+          <p className="gesture-detection" role="status">
             {recognition.gesture
-              ? `Gesto: ${gestureLabels[recognition.gesture]}`
-              : 'Aguardando gesto'}
+              ? `Mão detectada · ${gestureLabels[recognition.gesture]}`
+              : recognition.handDetected
+                ? 'Mão detectada · Aguardando gesto estável'
+                : 'Aguardando uma mão'}
           </p>
           <progress
             aria-label="Progresso da confirmação do gesto"
             max={1}
             value={recognition.progress}
           />
-          {recognition.confirmed && (
-            <p role="status">Comando reconhecido: {gestureLabels[recognition.confirmed]}</p>
+          {recognition.feedback && (
+            <p role="status">
+              Gesto confirmado: {gestureLabels[recognition.feedback.gesture]}
+              {action?.phase === phase ? ` · ${action.message}` : ''}
+            </p>
           )}
         </>
       )}

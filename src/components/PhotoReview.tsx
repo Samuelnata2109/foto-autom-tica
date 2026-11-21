@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { gestureConfig } from '../config/gestureConfig';
 import type { SessionPhoto } from '../types/photo';
 import { useEntranceAnimation } from '../hooks/useEntranceAnimation';
 import { Button } from './Button';
@@ -62,7 +63,10 @@ export function PhotoReview({
       </div>
       <p id="editing-availability">{frameMessage[photo.frame]}</p>
       {!confirmed && gestureActive && (
-        <p>Mostre o polegar para cima por 2 segundos para confirmar a foto.</p>
+        <p>
+          Mostre o polegar para cima por{' '}
+          {(gestureConfig.confirmationMs / 1000).toLocaleString('pt-BR')} s para confirmar a foto.
+        </p>
       )}
       {confirmed && (
         <p ref={confirmation} tabIndex={-1} role="status">

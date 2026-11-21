@@ -3,6 +3,7 @@ import { act, useRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGestureRecognition } from '../src/hooks/useGestureRecognition';
+import { GestureGuide } from '../src/components/GestureGuide';
 import { createGestureRecognizer, detectGesture } from '../src/services/gestureRecognizer';
 import { gestureConfig } from '../src/config/gestureConfig';
 import type { GesturePhase } from '../src/types/gesture';
@@ -65,6 +66,7 @@ function Harness({
         {recognition.workerError} / {recognition.incidents.timeouts} /{' '}
         {recognition.incidents.failures}
       </output>
+      <GestureGuide recognition={recognition} phase={phase} />
     </>
   );
 }
@@ -409,5 +411,23 @@ it.each([
       );
     }
     expect(onCommand.mock.calls).toEqual(observe ? [] : [[command]]);
+    expect(host.textContent).toContain('Mão detectada');
+    if (observe) {
+      expect(host.textContent).not.toContain('Gesto confirmado');
+    } else {
+      expect(host.textContent).toContain('Gesto confirmado');
+      const nextPhase =
+        command === 'cancel' ? 'idle' : command === 'confirm' ? 'confirmed' : 'countdown';
+      const message = {
+        start5: 'Contagem de 5 s iniciada',
+        start10: 'Contagem de 10 s iniciada',
+        cancel: 'Contagem cancelada',
+        confirm: 'Foto confirmada',
+      }[command];
+      await act(async () => root.render(<Harness phase={nextPhase} />));
+      expect(host.textContent).toContain(` · ${message}`);
+      await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.commandFeedbackMs));
+      expect(host.textContent).not.toContain('Gesto confirmado');
+    }
   },
 );

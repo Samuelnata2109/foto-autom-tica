@@ -41,7 +41,7 @@ export function BoothPage() {
     ready,
     state.phase,
     (command) => {
-      if (command === 'start5') capture.start(5, scenario);
+      if (command === 'start5') capture.captureNow(scenario);
       if (command === 'start10') capture.start(10, scenario);
       if (command === 'cancel') capture.cancel();
       if (command === 'confirm') capture.confirm();

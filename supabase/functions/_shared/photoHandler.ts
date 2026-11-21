@@ -16,6 +16,17 @@ type Reservation =
   | { state: 'reserved'; path: string; token: string }
   | { state: 'limited' | 'unavailable' | 'paused' };
 
+type SharedPhoto =
+  { state: 'ready'; path: string; expires_at: string; remaining_ms: number } | { state: 'limited' };
+
+async function shareHash(request: Request) {
+  if (request.headers.get('content-type') !== 'text/plain') return null;
+  const bytes = await boundedPhoto(request, 64);
+  if (bytes?.byteLength !== 64) return null;
+  const token = new TextDecoder().decode(bytes);
+  return proof.test(token) ? hashProof(token) : null;
+}
+
 export function photoHandler(
   admin: Admin,
   authorize: (authorization: string | null) => Promise<string | null>,
@@ -27,6 +38,7 @@ export function photoHandler(
     const headers = new Headers({
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
       Vary: 'Origin',
     });
     if (origin && permitted) headers.set('Access-Control-Allow-Origin', origin);
@@ -51,10 +63,36 @@ export function photoHandler(
     }
     if (request.method !== 'POST') return json(405, 'method');
     try {
+      const get = (name: string) => request.headers.get('x-booth-' + name) ?? '';
+      const action = get('action');
+      if (action === 'share-read') {
+        const hash = await shareHash(request);
+        if (!hash) return json(404, 'unavailable');
+        const lookup = (consume: boolean) =>
+          admin.rpc<SharedPhoto | null>('booth_shared_photo', { p_hash: hash, p_consume: consume });
+        const share = await lookup(true);
+        if (share?.state === 'limited') {
+          headers.set('Retry-After', '60');
+          return json(429, 'limit');
+        }
+        if (!share || share.remaining_ms <= 0) return json(404, 'unavailable');
+        const image = await admin.download(share.path);
+        const verified = image && (await lookup(false));
+        if (
+          verified?.state !== 'ready' ||
+          verified.path !== share.path ||
+          verified.remaining_ms <= 0
+        )
+          return json(404, 'unavailable');
+        headers.set('Content-Type', 'image/jpeg');
+        headers.set('X-Booth-Expires', verified.expires_at);
+        headers.set('X-Booth-Remaining-Ms', String(verified.remaining_ms));
+        headers.set('Access-Control-Expose-Headers', 'X-Booth-Expires, X-Booth-Remaining-Ms');
+        return new Response(image, { headers });
+      }
       const operator = await authorize(request.headers.get('authorization'));
       if (!operator) return json(401, 'operator');
-      const get = (name: string) => request.headers.get('x-booth-' + name) ?? '';
-      if (get('action') === 'operator') return json(204);
+      if (action === 'operator') return json(204);
       const id = get('photo');
       const session = get('session');
       const secret = get('proof');
@@ -65,7 +103,21 @@ export function photoHandler(
         p_operator: operator,
         p_proof: await hashProof(secret),
       };
-      switch (get('action')) {
+      switch (action) {
+        case 'share-create': {
+          if (get('consent') !== 'qr-v1') return json(400, 'consent');
+          const hash = await shareHash(request);
+          if (!hash) return json(400, 'share');
+          const expiresAt = await admin.rpc<string | null>('booth_create_share', {
+            ...scope,
+            p_hash: hash,
+          });
+          return expiresAt ? receipt(expiresAt, 201) : json(404, 'unavailable');
+        }
+        case 'share-revoke':
+          return (await admin.rpc<boolean>('booth_revoke_share', scope))
+            ? json(204)
+            : json(404, 'unavailable');
         case 'upload': {
           if (get('consent') !== '24h-v1') return json(400, 'consent');
           if (request.headers.get('content-type') !== 'image/jpeg') return json(415, 'type');

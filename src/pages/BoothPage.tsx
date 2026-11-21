@@ -80,7 +80,12 @@ export function BoothPage() {
             />
           )}
           {storageConfigured && state.phase === 'confirmed' && (
-            <PhotoStorageConsent key={state.photo.url} photo={state.photo} token={operatorToken} />
+            <PhotoStorageConsent
+              key={state.photo.url}
+              photo={state.photo}
+              token={operatorToken}
+              onNewSession={() => capture.retake()}
+            />
           )}
           <div className="booth-grid" data-reviewing={reviewing}>
             <div className="booth-stage booth-stage--camera">

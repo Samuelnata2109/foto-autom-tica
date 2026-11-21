@@ -5,6 +5,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PhotoStorageConsent } from '../src/components/PhotoStorageConsent';
 import * as storage from '../src/services/privatePhotoStorage';
 
+vi.mock('../src/services/photoShareLink', () => ({
+  sharingConfigured: true,
+  photoShareLink: (secret: string) => `https://cabine.example.test/#/foto/${secret}`,
+}));
+
 const original = { blob: new Blob(['photo'], { type: 'image/jpeg' }), width: 640, height: 480 };
 const photo = { ...original, original, url: 'blob:approved', frame: 'applied' } as const;
 let host: HTMLDivElement;
@@ -25,7 +30,9 @@ afterEach(async () => {
 });
 
 const open = (token: string | null = 'operator') =>
-  act(async () => root.render(<PhotoStorageConsent photo={photo} token={token} />));
+  act(async () =>
+    root.render(<PhotoStorageConsent photo={photo} token={token} onNewSession={vi.fn()} />),
+  );
 const click = (text: string) =>
   act(async () => {
     const button = [...host.querySelectorAll('button')].find((item) => item.textContent === text);
@@ -39,6 +46,29 @@ it('confirmar visualmente e recusar o armazenamento jamais enviam a foto', async
   await click('Continuar sem armazenar');
   expect(host.textContent).toContain('sessão local');
   expect(storage.storeConfirmedPhoto).not.toHaveBeenCalled();
+});
+
+it('gera QR apenas após consentimento separado e permite revogação', async () => {
+  const expiresAt = new Date(Date.now() + 60_000).toISOString();
+  const create = vi.spyOn(storage, 'shareStoredPhoto').mockResolvedValue(expiresAt);
+  const revoke = vi.spyOn(storage, 'revokePhotoShare').mockResolvedValue(undefined);
+  await open();
+  expect(host.textContent).not.toContain('Autorizar compartilhamento');
+  await click('Autorizar e armazenar');
+  expect(create).not.toHaveBeenCalled();
+  expect(host.querySelector('svg title')).toBeNull();
+  await click('Autorizar compartilhamento e gerar QR Code');
+  expect(create).toHaveBeenCalledExactlyOnceWith(
+    'operator',
+    expect.objectContaining({ proof: expect.any(String) }),
+    expect.stringMatching(/^[a-f0-9]{64}$/),
+    expect.any(AbortSignal),
+  );
+  expect(host.querySelector('svg title')?.textContent).toBe('QR Code da fotografia');
+  await click('Revogar link');
+  expect(revoke).toHaveBeenCalledOnce();
+  expect(host.textContent).toContain('Compartilhamento revogado');
+  expect(host.querySelector('svg title')).toBeNull();
 });
 
 it('exige login da equipe e decisão explícita para enviar e excluir', async () => {

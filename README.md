@@ -59,5 +59,6 @@ Para aplicar a formatação, execute `npm run format`.
 - [Roadmap oficial](docs/ROADMAP.md)
 - [Progresso do projeto](docs/PROGRESSO.md)
 - [Armazenamento privado e retenção](docs/ARMAZENAMENTO_PRIVADO.md)
+- [Compartilhamento seguro por QR Code](docs/COMPARTILHAMENTO_QR.md)
 - [Decisões técnicas](docs/DECISOES_TECNICAS.md)
 - [Diretrizes permanentes](AGENTS.md)

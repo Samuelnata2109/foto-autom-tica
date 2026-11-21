@@ -1,5 +1,7 @@
 # Armazenamento privado — Etapa 08
 
+O QR Code da Etapa 09 usa o mesmo bucket privado e preserva a validade original da fotografia. Consulte o [guia de compartilhamento](COMPARTILHAMENTO_QR.md).
+
 A confirmação da revisão mantém a foto local. O envio só acontece com **Autorizar e armazenar**. A cabine usa o JPEG final revisado, com cenário e moldura se aplicados. Recusar, perder a conexão ou ficar sem Supabase mantém o fluxo local.
 
 ## Configuração no Supabase
@@ -31,7 +33,7 @@ Uma repetição do pedido com a mesma prova e ID reaproveita o recibo enquanto o
 
 Ao concluir, `uploaded_at` vem do objeto registrado pelo servidor do Storage. O PostgreSQL preenche `expires_at = uploaded_at + interval '24 hours'`. O endpoint autenticado de leitura consulta o banco antes e depois de obter o arquivo. Na igualdade com a expiração ou após revogação, ele recusa novas entregas. As respostas usam `private, no-store`. A exclusão manual muda o estado para `deleting` antes da tentativa física. Se ela falhar, o job repete com a foto já inacessível. A interface oferece exclusão durante a revisão; ao encerrar a sessão local, a prova efêmera sai da memória. O operador não pode acessar outra foto só com o JWT da equipe.
 
-Nesta etapa não são emitidas URLs assinadas. Uma URL pré-assinada usualmente continua válida até o fim do seu prazo e uma resposta em cache pode sobreviver a mudanças de política. A Etapa 09 deve preferir entrega autenticada com checagem por requisição para revogação antecipada. Se usar URL assinada, o prazo precisa ser limitado ao tempo restante da foto e a arquitetura deve considerar a impossibilidade de revogar individualmente um link já emitido sem invalidar o objeto ou o cache. Cópias já recebidas pelo participante ficam fora do controle do endpoint. Consulte [acesso e revogação no Storage](https://supabase.com/docs/guides/storage/serving/downloads) e [chaves de assinatura](https://supabase.com/docs/guides/storage/security/signing-keys).
+A Etapa 09 entrega o JPEG pela Edge Function, que valida o compartilhamento a cada requisição e bloqueia novas leituras após revogação. Uma URL pré-assinada usualmente continua válida até o fim do prazo e uma resposta em cache pode sobreviver a mudanças de política. Cópias já recebidas pelo participante ficam fora do controle do endpoint. Consulte [acesso e revogação no Storage](https://supabase.com/docs/guides/storage/serving/downloads) e [chaves de assinatura](https://supabase.com/docs/guides/storage/security/signing-keys).
 
 ## Inspeção, monitoramento e recuperação
 

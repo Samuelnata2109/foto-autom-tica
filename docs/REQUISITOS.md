@@ -13,7 +13,7 @@ Os requisitos marcados como previstos serão refinados e validados na etapa indi
 | RF-05 | 06    | Previsto     | Aplicar e remover filtros e molduras, visualizar a composição e exportar a foto.                                                                  |
 | RF-06 | 07    | Previsto     | Segmentar as pessoas e substituir o cenário com opção de voltar ao fundo original.                                                                |
 | RF-07 | 08    | Implementado | Armazenar o JPEG autorizado no Supabase privado por até 24 horas de acesso e oferecer exclusão antecipada.                                        |
-| RF-08 | 09    | Previsto     | Compartilhar a foto autorizada por QR Code com expiração e revogação.                                                                             |
+| RF-08 | 09    | Implementado | Compartilhar a foto autorizada por QR Code com expiração e revogação. Homologação em celular pendente.                                            |
 | RF-09 | 10    | Previsto     | Publicar no Instagram após confirmação por foto e mostrar o resultado ou a opção de download.                                                     |
 | RF-10 | 11    | Previsto     | Permitir que operadores autorizados administrem eventos, configuração, retenção e exclusões.                                                      |
 | RF-11 | 03–11 | Parcial      | Informar o uso do vídeo e solicitar autorizações separadas antes de captura, armazenamento, compartilhamento e publicação.                        |

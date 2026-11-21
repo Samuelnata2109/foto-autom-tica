@@ -4,6 +4,8 @@ Depois de confirmar a foto, faça o armazenamento autorizado da Etapa 08. Escolh
 
 ## Configuração e implantação
 
+Para o endereço oficial do AI Photo Booth, use a [publicação pelo GitHub Pages](GITHUB_PAGES.md). O workflow define a URL do QR e usa as variáveis públicas do Supabase no build.
+
 1. Defina `VITE_PHOTO_SHARE_BASE_URL` com a URL pública **HTTPS** do frontend no build da cabine. Use a raiz exata da aplicação publicada, incluindo a subpasta, como `https://conta.github.io/foto-autom-tica/`. O QR vai abrir `#/foto/...` nessa implantação. Configure também `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` no build publicado.
 2. Confirme que `BOOTH_ALLOWED_ORIGINS` contém a origem do frontend público e da cabine, sem subpasta. A equipe usa as mesmas contas e o mesmo `BOOTH_OPERATOR_IDS` da Etapa 08.
 3. Em homologação, confira `supabase db push --dry-run`, aplique a migration `20261121000100_booth_photo_sharing.sql` com `supabase db push` e republique `supabase functions deploy booth-photos --no-verify-jwt`. A função verifica o JWT e a sessão para as ações da equipe e o token de compartilhamento nas leituras do visitante. [Autorização em Edge Functions](https://supabase.com/docs/guides/functions/auth)

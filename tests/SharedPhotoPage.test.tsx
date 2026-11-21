@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { HashRouter, MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { App } from '../src/App';
 import { SharedPhotoPage } from '../src/pages/SharedPhotoPage';
+import { photoShareLink } from '../src/services/photoShareLink';
 import * as storage from '../src/services/privatePhotoStorage';
 
 const secret = 'ab'.repeat(32);
@@ -52,6 +54,30 @@ function photo() {
     expiresAt: new Date(Date.now() + 5000).toISOString(),
   };
 }
+
+it('abre o link do QR na rota pública sob a subpasta do GitHub Pages', async () => {
+  const shareBase = 'https://samuelnata2109.github.io/foto-autom-tica/';
+  const url = new URL(photoShareLink(secret, shareBase)!);
+  expect(url.href).toBe(`${shareBase}#/foto/${secret}`);
+  const originalUrl = window.location.href;
+  const read = vi.spyOn(storage, 'readSharedPhoto').mockResolvedValue(photo());
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+  window.history.replaceState(null, '', url.pathname + url.hash);
+  try {
+    await act(async () =>
+      root.render(
+        <HashRouter>
+          <App />
+        </HashRouter>,
+      ),
+    );
+    expect(read).toHaveBeenCalledExactlyOnceWith(secret, expect.any(AbortSignal));
+    expect(host.querySelector('h1')?.textContent).toBe('Sua foto');
+    expect(host.querySelector('img.shared-photo-page__image')).not.toBeNull();
+  } finally {
+    window.history.replaceState(null, '', originalUrl);
+  }
+});
 
 it('baixa o JPEG com nova consulta autorizada', async () => {
   const read = vi.spyOn(storage, 'readSharedPhoto').mockResolvedValue(photo());

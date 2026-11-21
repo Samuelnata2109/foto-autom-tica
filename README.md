@@ -10,7 +10,7 @@ O celular pode se conectar ao cliente DroidCam no Windows por USB ou Wi-Fi.
 
 Use Node.js 24.15 ou superior na série 24 LTS (recomendado), 22.22.2 ou superior na
 série 22, ou Node.js 26, com npm.
-A integração usa a câmera do navegador ao entrar na cabine. Não requer variáveis de ambiente.
+A integração usa a câmera do navegador ao entrar na cabine. O modo local funciona sem configuração do Supabase.
 
 ```sh
 npm ci
@@ -25,6 +25,11 @@ Com a câmera pronta, selecione a duração e pressione **Tirar foto**. A contag
 ser cancelada. Na revisão, **Tirar novamente** descarta a foto e volta à transmissão.
 **Confirmar foto** mantém o JPEG em memória até você sair da cabine ou tirar outra foto.
 O espelhamento da prévia não altera a fotografia.
+
+Para habilitar o armazenamento temporário da Etapa 08, configure as variáveis públicas do
+Supabase em `.env.local`, prepare as migrations e o Cron e entre em **Acesso da equipe**.
+O participante decide se deseja armazenar a foto por até 24 horas depois de confirmá-la.
+Consulte o [guia de configuração e validação](docs/ARMAZENAMENTO_PRIVADO.md).
 
 Em `npm run dev`, **Prévias de desenvolvimento** abre os exemplos de contagem, revisão e
 compartilhamento. O reconhecimento local de gestos da Etapa 05 pode ser ativado na cabine; os comandos manuais continuam disponíveis.
@@ -53,5 +58,6 @@ Para aplicar a formatação, execute `npm run format`.
 - [Requisitos funcionais e não funcionais](docs/REQUISITOS.md)
 - [Roadmap oficial](docs/ROADMAP.md)
 - [Progresso do projeto](docs/PROGRESSO.md)
+- [Armazenamento privado e retenção](docs/ARMAZENAMENTO_PRIVADO.md)
 - [Decisões técnicas](docs/DECISOES_TECNICAS.md)
 - [Diretrizes permanentes](AGENTS.md)

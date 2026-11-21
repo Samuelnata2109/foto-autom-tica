@@ -16,3 +16,5 @@ public/models/*.download
 # Variáveis de ambiente locais
 .env.local
 .env*.local
+supabase/.temp/
+supabase/.branches/

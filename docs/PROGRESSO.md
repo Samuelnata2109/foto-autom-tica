@@ -189,3 +189,19 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Arquivos:** cabine, hooks de captura e gestos, serviço de molduras, serviço, worker e máscara de cenários, coordenação de visão, modelo e ilustrações locais, testes de captura e cenários. Usa o MediaPipe já instalado. O [guia da etapa](CENARIOS_VIRTUAIS.md) registra origem, licença e memória do modelo.
 - **Validação:** 98 testes passaram, além de lint, tipagem e build. No Chrome headless, o worker de produção segmentou um retrato público em 640 × 480 e 1920 × 1080, manteve as dimensões e sobrepôs a moldura. O ensaio completo levou 10,6 s e 8,2 s, respectivamente. As ilustrações foram exportadas como WebP após o Chrome rejeitar a decodificação do SVG no worker.
 - **Pendências:** validação física de bordas e fluidez, com webcam e DroidCam. A Etapa 08 depende de autorização.
+
+## 21/11/2026 — Etapa 08/12 — Armazenamento privado e retenção
+
+- **Base:** `feature/08-backend-storage`, criada a partir de `develop` em `9581d0b`, após o merge do PR #15.
+- **Entrega:** consentimento de armazenamento separado da confirmação, Auth de operador com prova por sessão, migrations para o bucket privado, fotos, limites e leases, Edge Functions de foto e limpeza, revogação de leitura após 24 horas e remoção manual ou por Cron. O fluxo local permanece disponível.
+- **Arquivos:** `supabase/migrations/`, `supabase/functions/`, `supabase/tests/`, serviço e componente de armazenamento, integração na cabine, variáveis públicas de exemplo, testes Vitest, roteiro de integração e [documentação operacional](ARMAZENAMENTO_PRIVADO.md). Nenhuma dependência de produção adicionada.
+- **Verificado no banco:** asserções em PostgreSQL/WASM com metadados de Storage simulados. Cobrem prazo do servidor, autorização, isolamento, claims concorrentes, repetição e órfãos.
+- **Verificações:** 108 testes passaram, junto de lint, tipagem, build e formatação. O intervalo do Cron e a chamada montada para pg_net foram conferidos com extensões simuladas no PostgreSQL. O processo real do Cron e a remoção física não foram executados nessa verificação.
+- **Pendências de homologação:** as migrations e funções ainda precisam ser aplicadas ao projeto Supabase. O teste integrado não pôde iniciar porque a CLI do Supabase não está instalada neste ambiente. Ativar os segredos de Cron e confirmar a exclusão de arquivo e metadados no Storage real antes do evento. PR e commit no relatório de entrega. A Etapa 09 depende de autorização.
+
+### 21/11/2026 — Convite e recuperação de senha da equipe
+
+- **Causa:** a cabine só implementava login por senha. O roteador por fragmento tratava o retorno do e-mail como navegação e levava à tela inicial.
+- **Correção:** interpretar e limpar o retorno antes do roteador. O SDK oficial `@supabase/auth-js` valida a sessão de convite ou recuperação e atualiza a senha. O login da equipe usa a mesma integração, com a verificação de operador já existente.
+- **Validação:** lint, tipagem e build passaram. A suíte passou com 116 testes em 11 arquivos usando `--pool=forks --maxWorkers=1`, incluindo oito testes novos de links, sessão e formulário. A execução anterior com threads teve dois timeouts de inicialização de workers do Vitest.
+- **Pendência de homologação:** validar no navegador um novo convite e uma nova recuperação com e-mails reais. O [guia de armazenamento](ARMAZENAMENTO_PRIVADO.md) registra Site URL, Redirect URLs e o roteiro de validação. Correção na branch `feature/08-backend-storage`, no PR #16.

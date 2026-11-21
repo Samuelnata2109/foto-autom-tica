@@ -1,0 +1,29 @@
+project_id = "ai-photo-booth"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[storage]
+enabled = true
+file_size_limit = "8MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+enable_signup = false
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[functions.booth-photos]
+verify_jwt = false
+
+[functions.booth-cleanup]
+verify_jwt = false

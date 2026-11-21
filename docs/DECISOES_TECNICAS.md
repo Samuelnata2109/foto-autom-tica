@@ -42,12 +42,13 @@ de vídeo.
 
 ## DT-04 — Persistência e integrações com acesso restrito
 
-**Status:** proposta a validar nas Etapas 08 a 11.
+**Status:** implementada na Etapa 08, com homologação do projeto Supabase pendente.
 
-Usar Supabase com bucket privado e RLS. Autorizar acesso por evento e foto. Compartilhar
-com token temporário revogável e isolar credenciais de publicação e administração no
-servidor. A escolha de backend para essas operações e os prazos de retenção e expiração
-serão refinados conforme os requisitos de operação e privacidade.
+O backend usa Supabase Auth da equipe, prova aleatória por captura, RLS e bucket privado.
+O consentimento de armazenamento é separado da confirmação visual. A expiração de 24 horas
+é calculada no PostgreSQL a partir da conclusão no Storage. A entrega autenticada valida
+o prazo e a revogação em cada pedido. A exclusão física usa a API Storage, disparada pelo
+Cron, com leases, repetição e reconciliação. Consulte [Armazenamento privado](ARMAZENAMENTO_PRIVADO.md).
 
 ## DT-05 — Interface da cabine e prévias
 

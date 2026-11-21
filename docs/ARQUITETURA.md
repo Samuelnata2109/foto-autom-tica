@@ -60,12 +60,12 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
    em andamento de gestos, e o Canvas coloca o cenário atrás da pessoa e a moldura acima.
    Cancelamento ou falha mantém a captura com fundo original. Veja
    [Cenários virtuais](CENARIOS_VIRTUAIS.md).
-6. **Armazenamento.** Na Etapa 08, após autorização específica de armazenamento, enviar somente
-   o arquivo autorizado a um bucket privado do Supabase. Guardar metadados mínimos (evento,
-   foto, consentimento e expiração) em tabelas com RLS e aplicar controles equivalentes ao
-   Storage. Usar chaves de operação idempotentes para evitar cargas duplicadas e limpar objetos
-   órfãos em falhas parciais. A exclusão remove os arquivos associados e revoga o acesso de
-   compartilhamento.
+6. **Armazenamento.** Na Etapa 08, o consentimento explícito libera o upload do JPEG revisado.
+   Edge Functions verificam Auth da equipe e prova efêmera de sessão. O bucket privado e as
+   tabelas com RLS ficam restritos ao backend. O PostgreSQL calcula a expiração de 24 horas
+   pelo horário do objeto no Storage. A leitura consulta o prazo a cada requisição. Cron e
+   Edge Function removem arquivos e metadados, com controle de concorrência e reconciliação.
+   Consulte [Armazenamento privado](ARMAZENAMENTO_PRIVADO.md).
 7. **QR Code.** Na Etapa 09, gerar o QR a partir de uma URL com token opaco e expiração. O
    servidor verifica validade e revogação a cada acesso e autoriza apenas a foto solicitada.
    Se usar URL assinada para entrega, manter sua validade curta e documentar a janela residual

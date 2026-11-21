@@ -1,6 +1,11 @@
 ﻿import { useEffect, useRef, useState, type RefObject } from 'react';
 import { gestureConfig as config } from '../config/gestureConfig';
 import { GestureVote } from '../services/gestureVote';
+import {
+  afterBackgroundVision,
+  backgroundReserved,
+  holdGestureWork,
+} from '../services/visionActivity';
 import { confirmationDuration, GestureValidation } from '../services/gestureValidation';
 import type {
   GestureCommand,
@@ -128,6 +133,11 @@ export function useGestureRecognition(
       started?: boolean;
     };
     let pending: Ticket | null = null;
+    let releaseWork: (() => void) | undefined;
+    const finishWork = () => {
+      releaseWork?.();
+      releaseWork = undefined;
+    };
     const live = () =>
       !hasFinished &&
       latest.current.enabled &&
@@ -136,6 +146,8 @@ export function useGestureRecognition(
     const canSample = () =>
       live() &&
       loaded &&
+      !backgroundReserved() &&
+      latest.current.phase !== 'capturing' &&
       !document.hidden &&
       (latest.current.diagnosticOnly ||
         ['idle', 'countdown', 'review'].includes(latest.current.phase));
@@ -156,6 +168,7 @@ export function useGestureRecognition(
       wake.current = null;
       worker?.terminate();
       worker = null;
+      finishWork();
     };
     let count = 0;
     let firstAt = 0;
@@ -261,6 +274,7 @@ export function useGestureRecognition(
         clearDeadline();
         totalPreparation += performance.now() - timestamp;
         prepared++;
+        releaseWork = holdGestureWork();
         worker.postMessage(
           {
             type: 'frame',
@@ -298,106 +312,115 @@ export function useGestureRecognition(
 
     setStatus('loading');
     setError('');
-    try {
-      if (typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined')
-        throw new Error('Worker ou ImageBitmap indisponível');
-      const instance = new Worker(
-        new URL('../workers/gestureRecognition.worker.ts', import.meta.url),
-        { type: 'module' },
-      );
-      worker = instance;
-      deadline = window.setTimeout(
-        () => fail('Tempo limite de inicialização do worker', true),
-        config.workerInitializationTimeoutMs,
-      );
-      instance.onmessage = (event: MessageEvent<GestureWorkerResponse>) => {
-        if (!live() || worker !== instance) return;
-        const message = event.data;
-        if (message.type === 'error') {
-          fail(message.message);
-        } else if (message.type === 'ready' && !loaded) {
-          clearDeadline();
-          loaded = true;
-          startupMs = message.startupMs;
-          setBackend('Worker · CPU/WASM');
-          if (latest.current.debug) publish(performance.now());
-          schedule();
-        } else if (message.type === 'started' && pending?.id === message.id) {
-          pending.started = true;
-        } else if (message.type === 'result' && pending?.id === message.id) {
-          clearDeadline();
-          const ticket = pending;
-          const now = performance.now();
-          const cost = now - ticket.timestamp;
-          if (count === 0) firstAt = now;
-          count++;
-          totalInference += message.inferenceMs;
-          maxInference = Math.max(maxInference, message.inferenceMs);
-          if (latest.current.debug && now - lastPublish >= config.diagnosticsIntervalMs)
-            publish(now);
-          const warming = firstFrame;
-          if (warming) {
-            firstFrame = false;
-            setStatus('active');
-            // The first live frame warms the graph before it can authorize a gesture.
-          } else if (valid(ticket) && cost > config.maximumSampleGapMs) {
-            clearFeedback(true);
-          } else if (valid(ticket)) {
-            const voted = vote.accept(message.detection, ticket.timestamp);
-            const result = validator.update(
-              voted,
-              ticket.phase,
-              ticket.timestamp,
-              acceptablePeriod,
-              true,
-            );
-            const showDetails =
-              latest.current.debug && (now === lastPublish || latest.current.overlay);
-            if (showDetails) {
-              setSample({
-                detection: message.detection,
-                reason: latest.current.diagnosticOnly
-                  ? 'Observação sem comandos: ' + result.reason
-                  : result.reason,
-                stable: Math.round(result.progress * confirmationDuration(result.gesture)),
-                validated: voted ? result.gesture : null,
-              });
+    const cancelStartup = afterBackgroundVision(() => {
+      if (!live()) return;
+      try {
+        if (typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined')
+          throw new Error('Worker ou ImageBitmap indisponível');
+        const instance = new Worker(
+          new URL('../workers/gestureRecognition.worker.ts', import.meta.url),
+          { type: 'module' },
+        );
+        worker = instance;
+        releaseWork = holdGestureWork();
+        deadline = window.setTimeout(
+          () => fail('Tempo limite de inicialização do worker', true),
+          config.workerInitializationTimeoutMs,
+        );
+        instance.onmessage = (event: MessageEvent<GestureWorkerResponse>) => {
+          if (!live() || worker !== instance) return;
+          const message = event.data;
+          if (message.type === 'error') {
+            fail(message.message);
+          } else if (message.type === 'ready' && !loaded) {
+            clearDeadline();
+            finishWork();
+            loaded = true;
+            startupMs = message.startupMs;
+            setBackend('Worker · CPU/WASM');
+            if (latest.current.debug) publish(performance.now());
+            schedule();
+          } else if (message.type === 'started' && pending?.id === message.id) {
+            pending.started = true;
+          } else if (message.type === 'result' && pending?.id === message.id) {
+            clearDeadline();
+            finishWork();
+            const ticket = pending;
+            const now = performance.now();
+            const cost = now - ticket.timestamp;
+            if (count === 0) firstAt = now;
+            count++;
+            totalInference += message.inferenceMs;
+            maxInference = Math.max(maxInference, message.inferenceMs);
+            if (latest.current.debug && now - lastPublish >= config.diagnosticsIntervalMs)
+              publish(now);
+            const warming = firstFrame;
+            if (warming) {
+              firstFrame = false;
+              setStatus('active');
+              // The first live frame warms the graph before it can authorize a gesture.
+            } else if (valid(ticket) && cost > config.maximumSampleGapMs) {
+              clearFeedback(true);
+            } else if (valid(ticket)) {
+              const voted = vote.accept(message.detection, ticket.timestamp);
+              const result = validator.update(
+                voted,
+                ticket.phase,
+                ticket.timestamp,
+                acceptablePeriod,
+                true,
+              );
+              const showDetails =
+                latest.current.debug && (now === lastPublish || latest.current.overlay);
+              if (showDetails) {
+                setSample({
+                  detection: message.detection,
+                  reason: latest.current.diagnosticOnly
+                    ? 'Observação sem comandos: ' + result.reason
+                    : result.reason,
+                  stable: Math.round(result.progress * confirmationDuration(result.gesture)),
+                  validated: voted ? result.gesture : null,
+                });
+              }
+              setGesture(result.gesture);
+              setProgress(result.progress);
+              if (result.command && !latest.current.diagnosticOnly) {
+                setLastCommand(result.command);
+                setConfirmed(result.gesture);
+                latest.current.onCommand(result.command);
+              }
             }
-            setGesture(result.gesture);
-            setProgress(result.progress);
-            if (result.command && !latest.current.diagnosticOnly) {
-              setLastCommand(result.command);
-              setConfirmed(result.gesture);
-              latest.current.onCommand(result.command);
-            }
-          }
 
-          // Small inputs and one outstanding frame bound the memory use. Reduce duty cycle under load.
-          if (!warming) {
-            smoothedCost = smoothedCost === undefined ? cost : smoothedCost * 0.75 + cost * 0.25;
-            acceptablePeriod = Math.min(
-              config.maximumSamplingPeriodMs,
-              Math.max(1000 / config.maximumInferenceHz, smoothedCost * 2),
-            );
-            // Leave time for the preview even when one inference exceeds the sampling interval.
-            const rest = Math.min(config.maximumSamplingPeriodMs, cost / 2);
-            nextSampleAt = Math.max(ticket.timestamp + acceptablePeriod, now + rest);
+            // Small inputs and one outstanding frame bound the memory use. Reduce duty cycle under load.
+            if (!warming) {
+              smoothedCost = smoothedCost === undefined ? cost : smoothedCost * 0.75 + cost * 0.25;
+              acceptablePeriod = Math.min(
+                config.maximumSamplingPeriodMs,
+                Math.max(1000 / config.maximumInferenceHz, smoothedCost * 2),
+              );
+              // Leave time for the preview even when one inference exceeds the sampling interval.
+              const rest = Math.min(config.maximumSamplingPeriodMs, cost / 2);
+              nextSampleAt = Math.max(ticket.timestamp + acceptablePeriod, now + rest);
+            }
+            pending = null;
+            schedule();
           }
-          pending = null;
-          schedule();
-        }
-      };
-      instance.onerror = (event) => fail(event?.message || 'Erro do worker');
-      instance.onmessageerror = () => fail('Falha ao receber uma mensagem do worker');
-      instance.postMessage({
-        type: 'init',
-        wasmRoot: new URL(`${root}mediapipe/wasm`, document.baseURI).href,
-        modelUrl: new URL(`${root}models/gesture_recognizer.task`, document.baseURI).href,
-      });
-    } catch (cause) {
-      fail(cause);
-    }
-    return stop;
+        };
+        instance.onerror = (event) => fail(event?.message || 'Erro do worker');
+        instance.onmessageerror = () => fail('Falha ao receber uma mensagem do worker');
+        instance.postMessage({
+          type: 'init',
+          wasmRoot: new URL(`${root}mediapipe/wasm`, document.baseURI).href,
+          modelUrl: new URL(`${root}models/gesture_recognizer.task`, document.baseURI).href,
+        });
+      } catch (cause) {
+        fail(cause);
+      }
+    });
+    return () => {
+      cancelStartup();
+      stop();
+    };
   }, [enabled, cameraReady, stream, videoRef, retryVersion]);
 
   useEffect(() => {

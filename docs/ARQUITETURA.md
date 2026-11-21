@@ -55,9 +55,11 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
 4. **Edição.** Na Etapa 06, manter a foto original em memória e representar filtros e molduras
    como parâmetros reversíveis. Compor a prévia em resolução reduzida e exportar o resultado
    em resolução adequada usando Canvas.
-5. **Cenários virtuais.** Na Etapa 07, avaliar segmentação de pessoas no dispositivo, com máscara
-   suavizada e composição do primeiro plano sobre o cenário selecionado. Validar bordas e grupos
-   em condições variadas. Se o modelo falhar ou demorar, oferecer edição com fundo original.
+5. **Cenários virtuais.** Na Etapa 07, a cabine segmenta o JPEG capturado em worker local com
+   MediaPipe, mantendo a prévia livre de segmentação. Um controle de execução aguarda o trabalho
+   em andamento de gestos, e o Canvas coloca o cenário atrás da pessoa e a moldura acima.
+   Cancelamento ou falha mantém a captura com fundo original. Veja
+   [Cenários virtuais](CENARIOS_VIRTUAIS.md).
 6. **Armazenamento.** Na Etapa 08, após autorização específica de armazenamento, enviar somente
    o arquivo autorizado a um bucket privado do Supabase. Guardar metadados mínimos (evento,
    foto, consentimento e expiração) em tabelas com RLS e aplicar controles equivalentes ao

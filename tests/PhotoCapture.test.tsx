@@ -102,6 +102,30 @@ async function advance(milliseconds: number) {
 
 describe('Sistema fotográfico', () => {
   it.each([
+    ['start5', 0],
+    ['start10', 10_000],
+  ] as const)('encaminha %s para captura com espera de %i ms', async (command, wait) => {
+    const useRecognition = recognition.useGestureRecognition;
+    let dispatch: ((command: GestureCommand) => void) | undefined;
+    vi.spyOn(recognition, 'useGestureRecognition').mockImplementation((...args) => {
+      if (args[3] === 'idle') dispatch = args[4];
+      return useRecognition(...args);
+    });
+    const video = await open();
+    await act(async () => {
+      dispatch!(command);
+      dispatch!(command);
+    });
+    if (wait) {
+      await advance(wait - 1);
+      expect(drawImage).not.toHaveBeenCalled();
+      await advance(1);
+    }
+    expect(drawImage).toHaveBeenCalledExactlyOnceWith(video, 0, 0, 1280, 720);
+    expect(host.textContent).toContain('Revisão da foto');
+  });
+
+  it.each([
     [640, 480],
     [1920, 1080],
   ])('aplica o cenário escolhido na captura %i × %i', async (width, height) => {

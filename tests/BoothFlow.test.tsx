@@ -81,6 +81,8 @@ describe('Experiência da cabine', () => {
     expect(container.querySelector('video')).toBeNull();
     expect(container.querySelectorAll('.gesture-guide li')).toHaveLength(4);
     expect(find('.gesture-guide').textContent).toContain('IA desativada');
+    expect(find('.gesture-guide').textContent).toContain('Tirar foto imediatamente');
+    expect(find('.gesture-guide').textContent).toContain('Temporizador de 10 s');
   });
 });
 

@@ -16,11 +16,29 @@ function isPublicKey(key: string) {
   }
 }
 
-export default defineConfig(({ mode }) => {
-  const key = loadEnv(mode, process.cwd()).VITE_SUPABASE_PUBLISHABLE_KEY;
+const pagesBase = '/foto-autom-tica/';
+const pagesUrl = `https://samuelnata2109.github.io${pagesBase}`;
+
+function isHttpsOrigin(value: string | undefined) {
+  if (!value || !URL.canParse(value)) return false;
+  const url = new URL(value);
+  return url.protocol === 'https:' && url.href === `${url.origin}/`;
+}
+
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd());
+  const key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
   if (key && !isPublicKey(key))
     throw new Error('Use somente a chave pública do Supabase na configuração VITE.');
+  const pages = mode === 'github-pages';
+  if (pages && command === 'build') {
+    if (!isHttpsOrigin(env.VITE_SUPABASE_URL) || !key)
+      throw new Error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY para o Pages.');
+    if (env.VITE_PHOTO_SHARE_BASE_URL !== pagesUrl)
+      throw new Error('Configure VITE_PHOTO_SHARE_BASE_URL com o endereço público do Pages.');
+  }
   return {
+    base: pages ? pagesBase : '/',
     worker: { format: 'es' },
     plugins: [react(), tailwindcss()],
     test: {

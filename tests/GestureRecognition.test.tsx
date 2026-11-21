@@ -413,6 +413,7 @@ it.each([
     expect(onCommand.mock.calls).toEqual(observe ? [] : [[command]]);
     expect(host.textContent).toContain('Mão detectada');
     if (observe) {
+      expect(host.textContent).toContain('Observação ativa · comandos pausados');
       expect(host.textContent).not.toContain('Gesto confirmado');
     } else {
       expect(host.textContent).toContain('Gesto confirmado');

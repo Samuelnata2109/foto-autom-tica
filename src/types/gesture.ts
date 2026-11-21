@@ -13,6 +13,7 @@ export type GestureDetection = {
   raw?: string;
   rawScore?: number;
   geometry?: GestureName | null;
+  geometrySource?: 'world' | 'image';
   points?: HandPoint[];
   thumbMetrics?: ThumbMetrics | null;
 } | null;

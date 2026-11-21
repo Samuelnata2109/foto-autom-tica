@@ -27,10 +27,12 @@ export function recognizedGesture(
   const name = detection.name as GestureName;
   if (detection.geometry && detection.geometry !== name) return null;
   const threshold =
-    detection.geometry === name
-      ? gestureConfig.supportedConfidence[name] -
-        (name === continuing ? gestureConfig.confidenceHysteresis : 0)
-      : gestureConfig.minimumConfidence;
+    detection.geometry !== name
+      ? gestureConfig.minimumConfidence
+      : detection.geometrySource === 'image'
+        ? gestureConfig.imageGeometryConfidence
+        : gestureConfig.supportedConfidence[name] -
+          (name === continuing ? gestureConfig.confidenceHysteresis : 0);
   return detection.score >= threshold ? name : null;
 }
 
@@ -47,6 +49,7 @@ export class GestureValidation {
   private heldMs = 0;
   private samples = 0;
   private missing = false;
+  private briefUncertainty = false;
   private latch: GestureName | null = null;
   private release: { gesture: GestureName | null; since: number } | null = null;
   private lastCommandAt = -Infinity;
@@ -60,6 +63,7 @@ export class GestureValidation {
     this.heldMs = 0;
     this.samples = 0;
     this.missing = false;
+    this.briefUncertainty = false;
     this.lastSampleAt = null;
     this.observedPeriod = null;
     this.release = null;
@@ -88,6 +92,11 @@ export class GestureValidation {
     this.lastSampleAt = now;
     if (smooth) samplePeriodMs = Math.max(samplePeriodMs, this.observedPeriod ?? samplePeriodMs);
     const gap = now - this.lastSeenAt;
+    const timely =
+      interval > 0 &&
+      interval <= gestureConfig.maximumSampleGapMs &&
+      interval <= samplePeriodMs + gestureConfig.sampleJitterMs;
+    const resumeAfterUncertainty = this.briefUncertainty && timely;
     const tolerance = gestureConfig.detectionGraceMs + (smooth ? samplePeriodMs : 0);
     const interrupted =
       gap > gestureConfig.maximumSampleGapMs ||
@@ -95,7 +104,10 @@ export class GestureValidation {
         samplePeriodMs +
           gestureConfig.sampleJitterMs +
           (smooth && this.missing ? samplePeriodMs : 0);
-    const gesture = recognizedGesture(detection, interrupted ? null : this.candidate);
+    const gesture = recognizedGesture(
+      detection,
+      interrupted && !resumeAfterUncertainty ? null : this.candidate,
+    );
     const canRelease = this.latch && gesture !== this.latch && (gesture || !handDetected);
     if (!canRelease) this.release = null;
     else if (
@@ -109,7 +121,9 @@ export class GestureValidation {
       this.release = null;
     }
     if (!gesture) {
-      if (this.candidate && gap > tolerance) {
+      this.briefUncertainty =
+        smooth && this.candidate !== null && !this.missing && handDetected && timely;
+      if (this.candidate && gap > tolerance && !this.briefUncertainty) {
         this.candidate = null;
         this.heldMs = 0;
         this.samples = 0;
@@ -125,7 +139,8 @@ export class GestureValidation {
       };
     }
     const changed = this.candidate !== gesture;
-    if (changed || interrupted) {
+    const restarted = interrupted && !resumeAfterUncertainty;
+    if (changed || restarted) {
       this.candidate = gesture;
       this.heldMs = 0;
       this.samples = 1;
@@ -134,11 +149,14 @@ export class GestureValidation {
       this.samples++;
     }
     this.lastSeenAt = now;
+    const resumed = this.missing;
     this.missing = false;
+    this.briefUncertainty = false;
     const progress = Math.min(1, this.heldMs / confirmationDuration(gesture));
     const allowed = commandFor(phase, gesture);
     const command =
       progress >= 1 &&
+      !resumed &&
       this.samples >= gestureConfig.minimumConfirmationSamples &&
       allowed &&
       this.latch !== gesture &&
@@ -158,7 +176,7 @@ export class GestureValidation {
           ? 'Aguardando liberação'
           : changed
             ? 'Novo gesto'
-            : interrupted
+            : restarted
               ? 'Intervalo prolongado'
               : progress < 1
                 ? 'Confirmando estabilidade'

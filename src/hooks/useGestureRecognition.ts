@@ -452,6 +452,7 @@ export function useGestureRecognition(
     setDebug,
     observe,
     setObserve,
+    diagnosticOnly,
     overlay,
     setOverlay,
     sample,

@@ -1,5 +1,6 @@
 export const gestureConfig = {
   supportedConfidence: { Open_Palm: 0.68, Victory: 0.68, Closed_Fist: 0.66, Thumb_Up: 0.65 },
+  imageGeometryConfidence: 0.74,
   confidenceHysteresis: 0.04,
   voteWindowMs: 450,
   voteShare: 0.6,

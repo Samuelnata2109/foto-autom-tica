@@ -19,17 +19,65 @@ function hand(name: GestureName) {
   p[4] = name === 'Thumb_Up' ? { x: -5, y: 5, z: 0 } : { x: -1, y: 2, z: 0 };
   return p;
 }
-function infer(name: string, score: number, pose: GestureName) {
+function infer(name: string, score: number, pose: GestureName | HandPoint[]) {
+  const points = typeof pose === 'string' ? hand(pose) : pose;
   const model = {
     recognizeForVideo: () => ({
       gestures: [[{ categoryName: name, score }]],
-      worldLandmarks: [hand(pose)],
-      landmarks: [hand(pose)],
+      worldLandmarks: [points],
+      landmarks: [points],
     }),
   } as unknown as GestureRecognizer;
   return detectGesture(model, {} as ImageBitmap, 100);
 }
 describe('reconhecimento híbrido', () => {
+  it.each(['Open_Palm', 'Victory', 'Closed_Fist', 'Thumb_Up'] as const)(
+    'aceita %s inclinado a 37 graus, deslocado e em escalas distintas com as duas mãos',
+    (name) => {
+      const angle = (37 * Math.PI) / 180;
+      for (const size of [0.008, 0.06]) {
+        for (const mirror of [1, -1]) {
+          const points = hand(name).map(({ x, y, z }) => {
+            const rolledY = x * Math.sin(angle) + y * Math.cos(angle);
+            return {
+              x: 0.19 + mirror * size * (x * Math.cos(angle) - y * Math.sin(angle)),
+              y: -0.1 + size * (rolledY * Math.cos(angle) - z * Math.sin(angle)),
+              z: 0.25 + size * (rolledY * Math.sin(angle) + z * Math.cos(angle)),
+            };
+          });
+          const detection = infer(name, 0.72, points);
+          expect(detection?.geometry).toBe(name);
+          expect(new GestureVote().accept(detection, 0)?.name).toBe(name);
+        }
+      }
+    },
+  );
+
+  it('aceita palma relaxada, paz estreita e polegar com um dedo impreciso', () => {
+    const palm = hand('Open_Palm');
+    palm[20] = { x: 1.5, y: 4, z: 1.4 };
+    expect(handGeometry(palm)).toBe('Open_Palm');
+    const peace = hand('Victory');
+    peace[8] = { x: -1.33, y: 5, z: 0 };
+    peace[12] = { x: -0.55, y: 5, z: 0 };
+    expect(handGeometry(peace)).toBe('Victory');
+    const thumb = hand('Thumb_Up');
+    thumb[20] = { x: 1.5, y: 3.45, z: 1.2 };
+    expect(infer('Thumb_Up', 0.66, thumb)?.geometry).toBe('Thumb_Up');
+    expect(infer('Thumb_Up', 0.95, 'Closed_Fist')?.name).toBe('None');
+  });
+
+  it('aplica histerese somente após reconhecer a mesma classe com geometria compatível', () => {
+    const vote = new GestureVote();
+    const strong = infer('Victory', 0.72, 'Victory');
+    const borderline = infer('Victory', 0.65, 'Victory');
+    expect(vote.accept(borderline, 0)).toBeNull();
+    expect(vote.accept(strong, 100)).toBe(strong);
+    expect(vote.accept(borderline, 200)).toBe(borderline);
+    expect(vote.accept(infer('Open_Palm', 0.65, 'Open_Palm'), 300)).toBeNull();
+    expect(vote.accept(borderline, 1200)).toBeNull();
+    expect(infer('Open_Palm', 1, [])).toBeNull();
+  });
   it('apoia polegar curto estendido sem exigir distância fixa à largura da palma', () => {
     const points = hand('Thumb_Up');
     points[2] = { x: -1.5, y: 2, z: 0 };

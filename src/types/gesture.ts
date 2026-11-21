@@ -1,7 +1,12 @@
 export type GestureName = 'Open_Palm' | 'Victory' | 'Closed_Fist' | 'Thumb_Up';
 export type GesturePhase = 'idle' | 'countdown' | 'capturing' | 'review' | 'confirmed';
 export type HandPoint = { x: number; y: number; z: number };
-export type ThumbMetrics = { straightRatio: number; outwardRatio: number; foldedFingers: number };
+export type ThumbMetrics = {
+  straightRatio: number;
+  outwardRatio: number;
+  foldedFingers: number;
+  extendedFingers: number;
+};
 export type GestureDetection = {
   name: string;
   score: number;

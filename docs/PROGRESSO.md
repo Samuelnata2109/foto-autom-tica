@@ -166,6 +166,14 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Verificações:** lint, typecheck, build e formatação aprovados. O PNG no build manteve o SHA-256 original. Em Chrome headless com a imagem pública de polegar, o worker do build levou 892 ms na primeira inferência e 291–366 ms nas seguintes. A preparação levou 3–10 ms. Este ensaio não mede FPS do DroidCam.
 - **Pendências:** medir com webcam e DroidCam, comparar fluidez com IA ligada e desligada e validar gestos, botões e revisão da foto. PR para `develop` no relatório de entrega. A Etapa 07 depende de autorização.
 
+### 21/11/2026 — Tolerância e tempo de confirmação dos gestos
+
+- **Status** em revisão, com homologação física pendente. Branch `fix/gesture-recognition-tolerance` baseada em `develop`.
+- **Mudanças** nos limiares geométricos e de confiança de cada gesto, com histerese, liberação observada antes de um novo comando e feedback de detecção, confirmação e execução no guia da cabine.
+- **Arquivos** de calibração, geometria, votação, validação, reconhecedor e hook de gestos, guia e revisão da foto, testes e [roteiro de reconhecimento](RECONHECIMENTO_GESTOS.md). Nenhuma dependência nova.
+- **Verificações** de lint, tipagem, build e formatação nos arquivos alterados. Os 106 testes passaram com `npm run test -- --pool=forks --maxWorkers=1`, incluindo landmarks sintéticos, liberação do gesto, feedback e regressões da cabine.
+- **Próxima validação** mede precisão e latência na webcam e no DroidCam, com o roteiro do guia de reconhecimento. O commit e o PR constam no relatório de entrega.
+
 ## 20/11/2026 — Etapa 06/12 — Molduras adaptativas
 
 - **Base:** `feature/06-adaptive-photo-frames` parte de `develop` em `8434474`, que já contém os PRs #11 e #12.

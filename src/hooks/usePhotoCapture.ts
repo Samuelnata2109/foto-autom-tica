@@ -82,10 +82,8 @@ export function usePhotoCapture(
       let frame: SessionPhoto['frame'] = 'missing';
       try {
         const composed = await composePhoto(original, ticket.controller.signal);
-        if (composed) {
-          photo = composed;
-          frame = 'applied';
-        }
+        frame = composed.frame;
+        if (composed.frame === 'applied') photo = composed.photo;
       } catch {
         frame = 'failed';
       }

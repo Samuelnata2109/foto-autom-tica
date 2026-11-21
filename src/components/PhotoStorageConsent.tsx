@@ -9,6 +9,8 @@ import {
   type PhotoAccess,
 } from '../services/privatePhotoStorage';
 import { Button } from './Button';
+import { PhotoShareControls } from './PhotoShareControls';
+import { sharingConfigured } from '../services/photoShareLink';
 
 export function StorageOperator({
   token,
@@ -88,12 +90,15 @@ type Stage =
 export function PhotoStorageConsent({
   photo,
   token,
+  onNewSession,
 }: {
   photo: SessionPhoto;
   token: string | null;
+  onNewSession?: () => void;
 }) {
   const [stage, setStage] = useState<Stage>('choice');
   const [expiresAt, setExpiresAt] = useState('');
+  const [storedAccess, setStoredAccess] = useState<PhotoAccess | null>(null);
   const [error, setError] = useState('');
   const scope = useRef<PhotoAccess | null>(null);
   const pending = useRef<AbortController | null>(null);
@@ -113,6 +118,7 @@ export function PhotoStorageConsent({
         );
       } else {
         setExpiresAt(await storeConfirmedPhoto(token, access, photo, controller.signal));
+        setStoredAccess(access);
         setStage('stored');
       }
     } catch (failure) {
@@ -158,6 +164,14 @@ export function PhotoStorageConsent({
       )}
       {stage === 'removed' && <p role="status">A cópia armazenada foi excluída.</p>}
       {error && <p role="alert">{error}</p>}
+      {sharingConfigured &&
+        storedAccess &&
+        onNewSession &&
+        ['stored', 'removing', 'removeError'].includes(stage) && (
+          <div hidden={stage === 'removing'}>
+            <PhotoShareControls token={token} access={storedAccess} onNewSession={onNewSession} />
+          </div>
+        )}
       <div className="preview-actions">
         {canUpload && (
           <Button onClick={() => void perform('upload')} disabled={!token}>

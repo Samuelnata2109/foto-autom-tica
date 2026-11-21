@@ -1,8 +1,10 @@
 name: Publicar AI Photo Booth no GitHub Pages
 
 on:
+  # Única fonte de publicação do Pages. Para usar main, ajuste branches e a proteção do ambiente.
   push:
     branches: [develop]
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -41,7 +41,7 @@ function Fist() {
 }
 
 const gestures = [
-  { name: 'Mão aberta', action: 'Temporizador de 5 s', icon: Hand },
+  { name: 'Mão aberta', action: 'Tirar foto imediatamente', icon: Hand },
   { name: 'Sinal de paz', action: 'Temporizador de 10 s', icon: Peace },
   { name: 'Polegar positivo', action: 'Confirmar fotografia', icon: ThumbsUp },
   { name: 'Punho fechado', action: 'Cancelar ação', icon: Fist },
@@ -71,7 +71,7 @@ const guidance: Record<GesturePhase, string> = {
 };
 
 const executed: Record<GestureCommand, { phase: GesturePhase; message: string }> = {
-  start5: { phase: 'countdown', message: 'Contagem de 5 s iniciada' },
+  start5: { phase: 'capturing', message: 'Captura imediata iniciada' },
   start10: { phase: 'countdown', message: 'Contagem de 10 s iniciada' },
   cancel: { phase: 'idle', message: 'Contagem cancelada' },
   confirm: { phase: 'confirmed', message: 'Foto confirmada' },

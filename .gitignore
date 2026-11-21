@@ -12,3 +12,7 @@ coverage/
 Thumbs.db
 public/models/*.task
 public/models/*.download
+
+# Variáveis de ambiente locais
+.env.local
+.env*.local

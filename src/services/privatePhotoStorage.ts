@@ -5,13 +5,17 @@ export const storageConfigured = Boolean(supabaseConfig);
 
 export type PhotoAccess = { id: string; session: string; proof: string };
 
+export function createPhotoSecret() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
 export function createPhotoAccess(): PhotoAccess {
   return {
     id: crypto.randomUUID(),
     session: crypto.randomUUID(),
-    proof: Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
-      byte.toString(16).padStart(2, '0'),
-    ).join(''),
+    proof: createPhotoSecret(),
   };
 }
 
@@ -36,22 +40,24 @@ export async function signInOperator(email: string, password: string, signal: Ab
 }
 
 async function callStorage(
-  token: string,
+  token: string | null,
   action: string,
   extra: Record<string, string>,
   signal: AbortSignal,
-  photo?: Blob,
+  body?: Blob | string,
 ) {
   const config = credentials();
   const result = await fetch(config.root + '/functions/v1/booth-photos', {
     method: 'POST',
     headers: {
       apikey: config.publishable,
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'X-Booth-Action': action,
       ...extra,
     },
-    body: photo,
+    body,
+    cache: 'no-store',
+    referrerPolicy: 'no-referrer',
     signal: AbortSignal.any([signal, AbortSignal.timeout(55000)]),
   });
   if (!result.ok) throw new PhotoStorageError(result.status);
@@ -93,4 +99,51 @@ export async function storeConfirmedPhoto(
 export async function deleteStoredPhoto(token: string, access: PhotoAccess, signal: AbortSignal) {
   const response = await callStorage(token, 'delete', sessionHeaders(access), signal);
   return response.status === 204;
+}
+
+export async function shareStoredPhoto(
+  token: string,
+  access: PhotoAccess,
+  secret: string,
+  signal: AbortSignal,
+) {
+  const response = await callStorage(
+    token,
+    'share-create',
+    { ...sessionHeaders(access), 'Content-Type': 'text/plain', 'X-Booth-Consent': 'qr-v1' },
+    signal,
+    secret,
+  );
+  const { expiresAt } = (await response.json()) as { expiresAt?: string };
+  if (!expiresAt || !Number.isFinite(Date.parse(expiresAt))) throw new PhotoStorageError(503);
+  return expiresAt;
+}
+
+export async function revokePhotoShare(token: string, access: PhotoAccess, signal: AbortSignal) {
+  await callStorage(token, 'share-revoke', sessionHeaders(access), signal);
+}
+
+export async function readSharedPhoto(secret: string, signal: AbortSignal) {
+  if (!/^[a-f0-9]{64}$/.test(secret)) throw new PhotoStorageError(404);
+  const startedAt = performance.now();
+  const response = await callStorage(
+    null,
+    'share-read',
+    { 'Content-Type': 'text/plain' },
+    signal,
+    secret,
+  );
+  const remainingMs = Number(response.headers.get('X-Booth-Remaining-Ms'));
+  const expiresAt = response.headers.get('X-Booth-Expires') ?? '';
+  if (
+    response.headers.get('Content-Type') !== 'image/jpeg' ||
+    !Number.isFinite(remainingMs) ||
+    remainingMs <= 0 ||
+    remainingMs > 86_400_000 ||
+    !Number.isFinite(Date.parse(expiresAt))
+  )
+    throw new PhotoStorageError(404);
+  // Include the request time in the local timer to account for delivery latency.
+  const deadline = startedAt + remainingMs;
+  return { image: await response.blob(), expiresAt, deadline };
 }

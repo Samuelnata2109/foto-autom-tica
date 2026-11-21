@@ -66,10 +66,10 @@ e buffers ficam no fluxo de processamento, fora do estado global do React.
    pelo horário do objeto no Storage. A leitura consulta o prazo a cada requisição. Cron e
    Edge Function removem arquivos e metadados, com controle de concorrência e reconciliação.
    Consulte [Armazenamento privado](ARMAZENAMENTO_PRIVADO.md).
-7. **QR Code.** Na Etapa 09, gerar o QR a partir de uma URL com token opaco e expiração. O
-   servidor verifica validade e revogação a cada acesso e autoriza apenas a foto solicitada.
-   Se usar URL assinada para entrega, manter sua validade curta e documentar a janela residual
-   após revogação; quando for necessário revogar imediatamente, entregar a foto pelo servidor.
+7. **QR Code.** Após consentimento separado, a cabine emite um token aleatório e gera o QR localmente.
+   O visitante usa a rota pública por fragmento. A mesma Edge Function da Etapa 08 valida o hash
+   do token e o prazo original da foto antes e após a leitura do bucket privado. Revogação,
+   exclusão antecipada e expiração bloqueiam novas entregas. [Compartilhamento por QR Code](COMPARTILHAMENTO_QR.md).
 8. **Instagram.** Na Etapa 10, confirmar elegibilidade, permissões, revisão e limites na
    documentação oficial da Meta. Planejar publicação via backend com confirmação explícita por
    foto, credenciais fora do navegador e registro do resultado. Manter download como alternativa.

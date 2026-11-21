@@ -1,8 +1,8 @@
 export const maximumPhotoBytes = 8 * 1024 * 1024;
 
-export async function boundedPhoto(request: Request) {
+export async function boundedPhoto(request: Request, maxBytes = maximumPhotoBytes) {
   const length = Number(request.headers.get('content-length'));
-  if (length > maximumPhotoBytes) return null;
+  if (length > maxBytes) return null;
   const reader = request.body?.getReader();
   if (!reader) return new Uint8Array();
   const chunks: Uint8Array[] = [];
@@ -12,7 +12,7 @@ export async function boundedPhoto(request: Request) {
       const chunk = await reader.read();
       if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > maximumPhotoBytes) {
+      if (size > maxBytes) {
         await reader.cancel();
         return null;
       }

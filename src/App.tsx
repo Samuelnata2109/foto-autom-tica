@@ -4,6 +4,7 @@ import { useEntranceAnimation } from './hooks/useEntranceAnimation';
 import { BoothPage } from './pages/BoothPage';
 import { DevelopmentPreviewPage } from './pages/DevelopmentPreviewPage';
 import { HomePage } from './pages/HomePage';
+import { SharedPhotoPage } from './pages/SharedPhotoPage';
 
 export function App() {
   const { pathname } = useLocation();
@@ -19,6 +20,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/cabine" element={<BoothPage />} />
+        <Route path="/foto/:secret?" element={<SharedPhotoPage />} />
         {import.meta.env.DEV && <Route path="/previa/:view" element={<DevelopmentPreviewPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -221,3 +221,19 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Mudanças** recuperação de uma amostra incerta sem contabilizar a pausa, verificação complementar com a geometria do quadro e indicação de bloqueios no guia. Configuração, serviços, hook, componentes, testes e [roteiro de reconhecimento](RECONHECIMENTO_GESTOS.md) atualizados. Nenhuma dependência nova.
 - **Verificações** lint, tipagem, build e formatação aprovados. Os 130 testes passaram com `npm run test -- --pool=forks --maxWorkers=1`. Os seis novos casos cobrem projeções em 4:3 e 16:9 e amostras intermitentes. O commit e o PR constam no relatório de entrega.
 - **Pendência** medição de precisão, latência e fluidez com webcam e DroidCam. O reconhecimento processa uma mão por vez.
+
+## 21/11/2026 — Etapa 09/12 — Compartilhamento seguro por QR Code
+
+- **Base** `develop` com os PRs #16, #17 e #18 integrados. O desenvolvedor confirmou que o armazenamento privado da Etapa 08 foi validado em ambiente real. Implementação na branch `feature/09-qr-sharing`.
+- **Entrega** consentimento específico para compartilhar, QR e link copiável na cabine, validade e revogação, página pública responsiva com visualização e download em JPEG.
+- **Segurança** token aleatório de 256 bits com SHA-256 no banco, RLS, limite de 12 leituras por minuto por token e dupla validação no servidor. A validade acompanha a foto original e a exclusão bloqueia novas leituras e remove o registro associado.
+- **Arquivos** migration e testes SQL, handler `booth-photos`, serviço de armazenamento, configuração de URL pública, interface da cabine, rota do visitante, testes Vitest e [guia de implantação e validação](COMPARTILHAMENTO_QR.md). Dependência `qrcode.react` 4.2.0.
+- **Verificações** 139 testes em 13 arquivos com `npm run test -- --pool=forks --maxWorkers=1`. Lint, tipagem, build e formatação aprovados. A migration e as asserções de acesso, limite, expiração, revogação e exclusão passaram em PostgreSQL/WASM com metadados de Storage sintéticos. Commit e PR no relatório de entrega.
+- **Pendências** aplicar a migration e publicar a função e o frontend em homologação. Validar leitura do QR e download em celular real em HTTPS. Nenhuma alteração foi aplicada ao Supabase hospedado.
+
+### 21/11/2026 — Preparação do GitHub Pages
+
+- **Base** a `develop` contém o PR #20. O desenvolvedor confirmou a aplicação da migration e a publicação de `booth-photos` no Supabase hospedado. A configuração do frontend está na branch `feature/github-pages-deploy`.
+- **Entrega** workflow de publicação de `dist` por push em `develop`, Vite com modo `github-pages`, URL pública de QR, preparação do modelo por SHA-256 e guia de operação. O runner usa Node 24 e `npm ci`. Arquivos principais `.github/workflows/deploy-pages.yml`, `vite.config.ts`, `tests/SharedPhotoPage.test.tsx` e [GitHub Pages](GITHUB_PAGES.md).
+- **Verificações** lint, tipagem, formatação e builds local e de Pages aprovados. A suíte completa passou em 121 casos e teve um timeout inicial no arquivo de captura. Os 19 casos desse arquivo passaram na repetição isolada com os prazos originais. A verificação HTTP local conferiu 18 recursos na subpasta e o Chrome renderizou a rota de foto com estado de link inválido. O processo headless precisou ser encerrado após emitir o DOM.
+- **Pendências** cadastrar as variáveis públicas no GitHub, autorizar `develop` no ambiente `github-pages` e desativar os workflows antigos da `main`. A origem do Pages recebeu 403 de CORS no preflight da função hospedada. Acrescentar a origem à configuração existente e validar o QR em HTTPS com celular real depois do deploy. Commit e PR no relatório de entrega.

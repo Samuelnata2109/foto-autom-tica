@@ -1,10 +1,58 @@
-﻿import { describe, expect, it } from 'vitest';
+﻿import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handGeometry, supportsThumb, thumbMetrics } from '../src/services/handGeometry';
 import { GestureVote } from '../src/services/gestureVote';
 import { GestureValidation } from '../src/services/gestureValidation';
-import { detectGesture } from '../src/services/gestureRecognizer';
-import type { GestureRecognizer } from '@mediapipe/tasks-vision';
+import { createGestureRecognizer, detectGesture } from '../src/services/gestureRecognizer';
+import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision';
 import type { GestureName, GesturePhase, HandPoint } from '../src/types/gesture';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+it.each(['inicialização', 'aquecimento'] as const)(
+  'usa CPU após falha da GPU em %s',
+  async (stage) => {
+    const fetchModel = vi.fn().mockResolvedValue(new Response(new Uint8Array([1, 2, 3])));
+    vi.stubGlobal('fetch', fetchModel);
+    vi.spyOn(FilesetResolver, 'forVisionTasks').mockResolvedValue({
+      wasmLoaderPath: 'loader',
+      wasmBinaryPath: 'wasm',
+    });
+    const gpu = {
+      recognizeForVideo: vi.fn(() => {
+        throw new Error('GPU indisponível');
+      }),
+      close: vi.fn(),
+    };
+    const cpu = { recognizeForVideo: vi.fn(), close: vi.fn() };
+    const create = vi.spyOn(GestureRecognizer, 'createFromOptions');
+    if (stage === 'inicialização') create.mockRejectedValueOnce(new Error('GPU indisponível'));
+    else create.mockResolvedValueOnce(gpu as unknown as GestureRecognizer);
+    create.mockResolvedValueOnce(cpu as unknown as GestureRecognizer);
+    const frame = {} as OffscreenCanvas;
+    await expect(createGestureRecognizer('/wasm', '/models/gestures.task', frame)).resolves.toEqual(
+      { recognizer: cpu, delegate: 'CPU' },
+    );
+    expect(fetchModel).toHaveBeenCalledExactlyOnceWith('/models/gestures.task');
+    expect(create.mock.calls.map(([, options]) => options.baseOptions?.delegate)).toEqual([
+      'GPU',
+      'CPU',
+    ]);
+    expect(cpu.recognizeForVideo).toHaveBeenCalledExactlyOnceWith(frame, 0);
+    expect(gpu.close).toHaveBeenCalledTimes(Number(stage === 'aquecimento'));
+  },
+);
+
+it('identifica o HTTP 404 como erro do modelo e indica a instalação local', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
+  const create = vi.spyOn(GestureRecognizer, 'createFromOptions');
+  await expect(
+    createGestureRecognizer('/wasm', '/modelo.task', {} as OffscreenCanvas),
+  ).rejects.toThrow(/modelo de gestos.*HTTP 404.*npm run setup:gesture-model/);
+  expect(create).not.toHaveBeenCalled();
+});
 function hand(name: GestureName) {
   const p: HandPoint[] = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }));
   for (const [n, i] of [5, 9, 13, 17].entries()) {
@@ -64,7 +112,7 @@ describe('reconhecimento híbrido', () => {
         geometrySource: 'image',
       });
       expect(new GestureVote().accept(supported, 0)).toBe(supported);
-      expect(new GestureVote().accept(detect(0.73, []), 0)).toBeNull();
+      expect(new GestureVote().accept(detect(0.59, []), 0)).toBeNull();
       expect(detect(0.99, [hand('Open_Palm')])).toMatchObject({
         name: 'None',
         geometrySource: 'world',
@@ -95,7 +143,7 @@ describe('reconhecimento híbrido', () => {
 
   it('aceita palma relaxada, paz estreita e polegar com um dedo impreciso', () => {
     const palm = hand('Open_Palm');
-    palm[20] = { x: 1.5, y: 4, z: 1.4 };
+    palm[20] = { x: 1.5, y: 3.5, z: 1.4 };
     expect(handGeometry(palm)).toBe('Open_Palm');
     const peace = hand('Victory');
     peace[8] = { x: -1.33, y: 5, z: 0 };
@@ -109,12 +157,12 @@ describe('reconhecimento híbrido', () => {
 
   it('aplica histerese somente após reconhecer a mesma classe com geometria compatível', () => {
     const vote = new GestureVote();
-    const strong = infer('Victory', 0.72, 'Victory');
-    const borderline = infer('Victory', 0.65, 'Victory');
+    const strong = infer('Victory', 0.53, 'Victory');
+    const borderline = infer('Victory', 0.48, 'Victory');
     expect(vote.accept(borderline, 0)).toBeNull();
     expect(vote.accept(strong, 100)).toBe(strong);
     expect(vote.accept(borderline, 200)).toBe(borderline);
-    expect(vote.accept(infer('Open_Palm', 0.65, 'Open_Palm'), 300)).toBeNull();
+    expect(vote.accept(infer('Open_Palm', 0.48, 'Open_Palm'), 300)).toBeNull();
     expect(vote.accept(borderline, 1200)).toBeNull();
     expect(infer('Open_Palm', 1, [])).toBeNull();
   });

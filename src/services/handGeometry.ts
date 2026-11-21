@@ -71,8 +71,11 @@ export function thumbMetrics(p: HandPoint[]): ThumbMetrics | null {
     straightRatio: distance(p[2]!, p[4]!) / length,
     outwardRatio: distance(p[4]!, palm) / baseDistance,
     foldedFingers: fingers.filter(foldsFinger).length,
-    extendedFingers: fingers.filter((finger) => extendsFinger(finger, cfg.palmFingerStraightness))
-      .length,
+    extendedFingers: fingers.filter(
+      (finger) =>
+        finger.straightness >= cfg.thumbOtherFingerStraightness &&
+        finger.reach >= cfg.thumbOtherFingerReach,
+    ).length,
   };
 }
 

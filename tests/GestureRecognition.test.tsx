@@ -62,6 +62,7 @@ function Harness({
       </button>
       <button onClick={recognition.retry}>Tentar novamente</button>
       <span data-gesture={recognition.gesture ?? ''}>{recognition.status}</span>
+      <span data-backend>{recognition.backend}</span>
       <output>
         {recognition.workerError} / {recognition.incidents.timeouts} /{' '}
         {recognition.incidents.failures}
@@ -100,7 +101,7 @@ describe('ciclo de reconhecimento', () => {
     await act(async () => vi.advanceTimersByTimeAsync(38200));
     expect(worker.terminate).not.toHaveBeenCalled();
     expect(host.textContent).toContain('loading');
-    await act(async () => worker.reply({ type: 'ready', startupMs: 20 }));
+    await act(async () => worker.reply({ type: 'ready', startupMs: 20, delegate: 'CPU' }));
     await act(async () => vi.advanceTimersByTimeAsync(30000));
     expect(host.textContent).toContain('loading');
     expect(worker.terminate).not.toHaveBeenCalled();
@@ -117,7 +118,7 @@ describe('ciclo de reconhecimento', () => {
     await act(async () => host.querySelector('button')!.click());
     const worker = FakeWorker.instances[0]!;
     expect(worker.messages[0]).toMatchObject({ type: 'init' });
-    await act(async () => worker.reply({ type: 'ready', startupMs: 20 }));
+    await act(async () => worker.reply({ type: 'ready', startupMs: 20, delegate: 'CPU' }));
     await act(async () => {
       vi.advanceTimersByTime(500);
       await Promise.resolve();
@@ -144,7 +145,7 @@ describe('ciclo de reconhecimento', () => {
     });
     await act(async () => host.querySelector('button')!.click());
     const worker = FakeWorker.instances[0]!;
-    await act(async () => worker.reply({ type: 'ready', startupMs: 20 }));
+    await act(async () => worker.reply({ type: 'ready', startupMs: 20, delegate: 'CPU' }));
     await act(async () => {
       vi.advanceTimersByTime(100);
       await Promise.resolve();
@@ -174,7 +175,7 @@ describe('ciclo de reconhecimento', () => {
     await act(async () => root.render(<Harness />));
     await act(async () => host.querySelector('button')!.click());
     const worker = FakeWorker.instances[0]!;
-    await act(async () => worker.reply({ type: 'ready', startupMs: 20 }));
+    await act(async () => worker.reply({ type: 'ready', startupMs: 20, delegate: 'CPU' }));
     await act(async () => root.render(<Harness cameraReady={false} source={null} />));
     expect(worker.terminate).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('unavailable');
@@ -192,7 +193,7 @@ async function readyWorker() {
   });
   await act(async () => host.querySelector('button')!.click());
   const worker = FakeWorker.instances[0]!;
-  await act(async () => worker.reply({ type: 'ready', startupMs: 20 }));
+  await act(async () => worker.reply({ type: 'ready', startupMs: 20, delegate: 'CPU' }));
   return { worker, video };
 }
 
@@ -211,7 +212,7 @@ it('suspende a IA sem carregar CPU na interface e permite reconectar o worker', 
   await act(async () => host.querySelectorAll('button')[2]!.click());
   expect(FakeWorker.instances).toHaveLength(2);
   const replacement = FakeWorker.instances[1]!;
-  await act(async () => replacement.reply({ type: 'ready', startupMs: 20 }));
+  await act(async () => replacement.reply({ type: 'ready', startupMs: 20, delegate: 'CPU' }));
   await act(async () => vi.advanceTimersByTimeAsync(100));
   await act(async () =>
     replacement.reply({ type: 'result', inferenceMs: 10, id: 1, detection: null }),
@@ -233,10 +234,8 @@ it('separa o primeiro quadro lento do timeout de 3 s em regime', async () => {
   await act(async () => worker.reply({ type: 'started', id: 2 }));
   await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerInferenceTimeoutMs));
   expect(worker.terminate).toHaveBeenCalledOnce();
-  expect(host.textContent).toContain('unavailable');
-  expect(host.querySelector('output')?.textContent).toContain(
-    'inferência ou entrega do resultado / 1 / 0',
-  );
+  expect(host.textContent).toContain('loading');
+  expect(host.querySelector('output')?.textContent).toContain('inferência / 1 / 0');
 });
 
 it('encerra o primeiro quadro sem resposta no limite de aquecimento', async () => {
@@ -304,21 +303,79 @@ it('pega somente o quadro mais recente e desacelera após inferência lenta', as
   video.currentTime = 4;
   await act(async () => vi.advanceTimersByTimeAsync(80));
   expect(createImageBitmap).toHaveBeenCalledTimes(2);
+  const frame = worker.messages.at(-1);
+  if (frame?.type !== 'frame') throw Error('Quadro esperado');
+  const rest = Math.ceil(performance.now() - frame.timestamp);
+  const expectedAt = performance.now() + rest;
   await act(async () => worker.reply({ type: 'result', id: 2, inferenceMs: 160, detection: null }));
-  await act(async () => vi.advanceTimersByTimeAsync(159));
+  await act(async () => vi.advanceTimersByTimeAsync(rest - 1));
   expect(createImageBitmap).toHaveBeenCalledTimes(2);
   await act(async () => vi.advanceTimersByTimeAsync(1));
   expect(createImageBitmap).toHaveBeenCalledTimes(3);
-  expect(worker.messages.at(-1)).toMatchObject({ type: 'frame', timestamp: 470, id: 3 });
+  expect(worker.messages.at(-1)).toMatchObject({ type: 'frame', timestamp: expectedAt, id: 3 });
 });
 
-it('encerra worker sem resposta na inicialização e preserva botão manual', async () => {
+it('reinicia automaticamente e suspende após três timeouts consecutivos', async () => {
+  await act(async () => root.render(<Harness />));
+  await act(async () => host.querySelector('button')!.click());
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerInitializationTimeoutMs));
+    expect(FakeWorker.instances[attempt - 1]!.terminate).toHaveBeenCalledOnce();
+    if (attempt < 3) expect(host.textContent).toContain('loading');
+    await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerRetryDelayMs));
+    expect(FakeWorker.instances).toHaveLength(Math.min(attempt + 1, 3));
+  }
+  expect(host.textContent).toContain('unavailable');
+  expect(host.querySelector('output')?.textContent).toContain('inicialização do worker / 3 / 0');
+  expect(host.querySelector('button')!.disabled).toBe(false);
+});
+
+it('cancela a retomada agendada ao desligar o reconhecimento', async () => {
   await act(async () => root.render(<Harness />));
   await act(async () => host.querySelector('button')!.click());
   await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerInitializationTimeoutMs));
+  await act(async () => host.querySelector('button')!.click());
+  await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerRetryDelayMs));
+  expect(FakeWorker.instances).toHaveLength(1);
   expect(FakeWorker.instances[0]!.terminate).toHaveBeenCalledOnce();
-  expect(host.textContent).toContain('unavailable');
-  expect(host.querySelector('button')!.disabled).toBe(false);
+});
+
+it('mostra a GPU do novo worker e restaura o orçamento após um quadro válido', async () => {
+  const { video } = await readyWorker();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const limit =
+      attempt === 0
+        ? gestureConfig.workerFirstFrameTimeoutMs + 50
+        : gestureConfig.workerInitializationTimeoutMs;
+    await act(async () => vi.advanceTimersByTimeAsync(limit));
+    await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerRetryDelayMs));
+  }
+  const recovered = FakeWorker.instances[2]!;
+  await act(async () => recovered.reply({ type: 'ready', startupMs: 20, delegate: 'GPU' }));
+  expect(host.querySelector('[data-backend]')?.textContent).toBe('Worker · GPU');
+  for (let id = 1; id <= 2; id++) {
+    video.currentTime++;
+    await act(async () => vi.advanceTimersByTimeAsync(100));
+    await act(async () => recovered.reply({ type: 'result', id, inferenceMs: 5, detection: null }));
+  }
+  expect(host.textContent).toContain('active');
+  video.currentTime++;
+  await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerInferenceTimeoutMs + 100));
+  expect(host.textContent).toContain('loading');
+  await act(async () => vi.advanceTimersByTimeAsync(gestureConfig.workerRetryDelayMs));
+  expect(FakeWorker.instances).toHaveLength(4);
+});
+
+it('oferece orientação de instalação quando o modelo está ausente', async () => {
+  await act(async () => root.render(<Harness />));
+  await act(async () => host.querySelector('button')!.click());
+  const message =
+    'Não foi possível carregar o modelo de gestos (HTTP 404). Execute npm run setup:gesture-model.';
+  await act(async () =>
+    FakeWorker.instances[0]!.reply({ type: 'error', reason: 'model', message }),
+  );
+  expect(host.querySelector('[role=alert]')?.textContent).toBe(message);
+  expect(FakeWorker.instances[0]!.terminate).toHaveBeenCalledOnce();
 });
 
 it('ignora classificação de uma amostra antiga mesmo antes do timeout', async () => {
@@ -327,6 +384,9 @@ it('ignora classificação de uma amostra antiga mesmo antes do timeout', async 
   await act(async () => worker.reply({ type: 'result', id: 1, detection: null, inferenceMs: 5 }));
   video.currentTime++;
   await act(async () => vi.advanceTimersByTimeAsync(100 + gestureConfig.maximumSampleGapMs + 1));
+  const frame = worker.messages.at(-1);
+  if (frame?.type !== 'frame') throw Error('Quadro esperado');
+  const rest = Math.ceil((performance.now() - frame.timestamp) / 2);
   await act(async () =>
     worker.reply({
       type: 'result',
@@ -339,7 +399,7 @@ it('ignora classificação de uma amostra antiga mesmo antes do timeout', async 
   expect(host.textContent).toContain('active');
   expect(worker.terminate).not.toHaveBeenCalled();
   video.currentTime++;
-  await act(async () => vi.advanceTimersByTimeAsync(375));
+  await act(async () => vi.advanceTimersByTimeAsync(rest - 1));
   expect(createImageBitmap).toHaveBeenCalledTimes(2);
   await act(async () => vi.advanceTimersByTimeAsync(1));
   expect(createImageBitmap).toHaveBeenCalledTimes(3);
@@ -396,7 +456,8 @@ it.each([
     const { worker, video } = await readyWorker();
     await act(async () => root.render(<Harness phase={phase} />));
     if (observe) await act(async () => host.querySelectorAll('button')[1]!.click());
-    for (let i = 0; i <= 23; i++) {
+    const frames = command === 'cancel' ? 11 : 6;
+    for (let i = 0; i < frames; i++) {
       video.currentTime++;
       await act(async () => vi.advanceTimersByTimeAsync(100));
       const message = worker.messages.at(-1);
@@ -418,9 +479,15 @@ it.each([
     } else {
       expect(host.textContent).toContain('Gesto confirmado');
       const nextPhase =
-        command === 'cancel' ? 'idle' : command === 'confirm' ? 'confirmed' : 'countdown';
+        command === 'cancel'
+          ? 'idle'
+          : command === 'confirm'
+            ? 'confirmed'
+            : command === 'start5'
+              ? 'capturing'
+              : 'countdown';
       const message = {
-        start5: 'Contagem de 5 s iniciada',
+        start5: 'Captura imediata iniciada',
         start10: 'Contagem de 10 s iniciada',
         cancel: 'Contagem cancelada',
         confirm: 'Foto confirmada',

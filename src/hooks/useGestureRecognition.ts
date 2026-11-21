@@ -53,8 +53,13 @@ export function useGestureRecognition(
     meanPreparation: number | null;
     startupMs?: number;
   } | null>(null);
-  const [incidents, setIncidents] = useState({ timeouts: 0, failures: 0 });
+  const [incidents, setIncidents] = useState({
+    timeouts: 0,
+    failures: 0,
+    timeoutStages: {} as Record<string, number>,
+  });
   const [retryVersion, setRetryVersion] = useState(0);
+  const consecutiveTimeouts = useRef(0);
   const wake = useRef<(() => void) | null>(null);
   const [lastCommand, setLastCommand] = useState<GestureCommand | null>(null);
   const [vote] = useState(() => new GestureVote());
@@ -110,12 +115,16 @@ export function useGestureRecognition(
   }, []);
 
   useEffect(() => {
+    consecutiveTimeouts.current = 0;
+  }, [enabled, cameraReady, stream]);
+
+  useEffect(() => {
     setBackend('—');
-    setWorkerError('');
+    if (!consecutiveTimeouts.current) setWorkerError('');
     setLastCommand(null);
     setFeedback(null);
     setPerformanceSample(null);
-    clearFeedback();
+    clearFeedback(consecutiveTimeouts.current > 0);
     if (!enabled || !cameraReady || !stream) {
       setStatus(enabled ? 'unavailable' : 'off');
       setError(enabled ? 'Aguarde a câmera ficar pronta para usar a IA.' : '');
@@ -132,6 +141,7 @@ export function useGestureRecognition(
     let lastFrame = -1;
     let sequence = 0;
     let deadline: number | undefined;
+    let retryTimer: number | undefined;
     let cancelScheduled: (() => void) | undefined;
     let startupMs: number | undefined;
     type Ticket = {
@@ -173,6 +183,7 @@ export function useGestureRecognition(
       hasFinished = true;
       pending = null;
       clearDeadline();
+      window.clearTimeout(retryTimer);
       cancelScheduled?.();
       cancelScheduled = undefined;
       wake.current = null;
@@ -197,19 +208,37 @@ export function useGestureRecognition(
         startupMs,
       });
     };
-    const fail = (cause: unknown, timeout = false) => {
+    const fail = (cause: unknown, timeoutStage?: string, userMessage?: string) => {
       if (!live()) return;
       stop();
       setWorkerError(cause instanceof Error ? cause.message : String(cause));
       setIncidents((current) => ({
-        timeouts: current.timeouts + Number(timeout),
-        failures: current.failures + Number(!timeout),
+        timeouts: current.timeouts + Number(Boolean(timeoutStage)),
+        failures: current.failures + Number(!timeoutStage),
+        timeoutStages: timeoutStage
+          ? {
+              ...current.timeoutStages,
+              [timeoutStage]: (current.timeoutStages[timeoutStage] ?? 0) + 1,
+            }
+          : current.timeoutStages,
       }));
       if (latest.current.debug) publish(performance.now());
       clearFeedback(true);
       setBackend('—');
+      if (timeoutStage && ++consecutiveTimeouts.current < config.workerTimeoutLimit) {
+        setStatus('loading');
+        setError('Reiniciando o reconhecimento de gestos…');
+        retryTimer = window.setTimeout(
+          () => setRetryVersion((current) => current + 1),
+          config.workerRetryDelayMs,
+        );
+        return;
+      }
       setStatus('unavailable');
-      setError('Reconhecimento suspenso. Use os controles manuais ou tente ativar a IA novamente.');
+      setError(
+        userMessage ??
+          'Reconhecimento suspenso. Use os controles manuais ou tente ativar a IA novamente.',
+      );
     };
 
     const schedule = () => {
@@ -270,7 +299,7 @@ export function useGestureRecognition(
       let frame: ImageBitmap | undefined;
       let transferred = false;
       deadline = window.setTimeout(
-        () => fail('Tempo limite na preparação do quadro', true),
+        () => fail('Tempo limite na preparação do quadro', 'preparação do quadro'),
         config.workerInferenceTimeoutMs,
       );
       try {
@@ -298,11 +327,9 @@ export function useGestureRecognition(
         transferred = true;
         deadline = window.setTimeout(
           () => {
-            const stage = ticket.started
-              ? 'inferência ou entrega do resultado'
-              : 'entrega ao worker';
+            const stage = ticket.started ? 'inferência' : 'entrega ao worker';
             const warmup = firstFrame ? ' no primeiro quadro' : '';
-            fail(`Tempo limite de ${stage}${warmup}`, true);
+            fail(`Tempo limite de ${stage}${warmup}`, stage);
           },
           firstFrame ? config.workerFirstFrameTimeoutMs : config.workerInferenceTimeoutMs,
         );
@@ -334,20 +361,24 @@ export function useGestureRecognition(
         worker = instance;
         releaseWork = holdGestureWork();
         deadline = window.setTimeout(
-          () => fail('Tempo limite de inicialização do worker', true),
+          () => fail('Tempo limite de inicialização do worker', 'inicialização do worker'),
           config.workerInitializationTimeoutMs,
         );
         instance.onmessage = (event: MessageEvent<GestureWorkerResponse>) => {
           if (!live() || worker !== instance) return;
           const message = event.data;
           if (message.type === 'error') {
-            fail(message.message);
+            fail(
+              message.message,
+              undefined,
+              message.reason === 'model' ? message.message : undefined,
+            );
           } else if (message.type === 'ready' && !loaded) {
             clearDeadline();
             finishWork();
             loaded = true;
             startupMs = message.startupMs;
-            setBackend('Worker · CPU/WASM');
+            setBackend(message.delegate === 'GPU' ? 'Worker · GPU' : 'Worker · CPU/WASM');
             if (latest.current.debug) publish(performance.now());
             schedule();
           } else if (message.type === 'started' && pending?.id === message.id) {
@@ -372,6 +403,7 @@ export function useGestureRecognition(
             } else if (valid(ticket) && cost > config.maximumSampleGapMs) {
               clearFeedback(true);
             } else if (valid(ticket)) {
+              consecutiveTimeouts.current = 0;
               const detected = message.detection !== null;
               const voted = vote.accept(message.detection, ticket.timestamp, acceptablePeriod);
               const result = validator.update(
@@ -460,7 +492,10 @@ export function useGestureRecognition(
     workerError,
     performanceSample,
     incidents,
-    retry: () => setRetryVersion((current) => current + 1),
+    retry: () => {
+      consecutiveTimeouts.current = 0;
+      setRetryVersion((current) => current + 1);
+    },
     lastCommand,
   };
 }

@@ -1,15 +1,49 @@
 import { FilesetResolver, GestureRecognizer } from '@mediapipe/tasks-vision';
 import { handGeometry, supportsThumb, thumbMetrics } from './handGeometry';
-import type { GestureDetection } from '../types/gesture';
+import type { GestureDelegate, GestureDetection } from '../types/gesture';
 import { gestureConfig } from '../config/gestureConfig';
 
-export async function createGestureRecognizer(wasmRoot: string, modelUrl: string) {
+export class GestureModelLoadError extends Error {}
+
+export async function createGestureRecognizer(
+  wasmRoot: string,
+  modelUrl: string,
+  warmup: OffscreenCanvas,
+) {
+  let model: Uint8Array<ArrayBuffer>;
+  try {
+    const response = await fetch(modelUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (response.headers.get('content-type')?.startsWith('text/html'))
+      throw new Error('o servidor retornou uma página HTML');
+    model = new Uint8Array(await response.arrayBuffer());
+    if (model.length === 0) throw new Error('o arquivo está vazio');
+  } catch (cause) {
+    const detail = cause instanceof Error ? ` (${cause.message})` : '';
+    throw new GestureModelLoadError(
+      `Não foi possível carregar o modelo de gestos${detail}. Em desenvolvimento, execute npm run setup:gesture-model.`,
+    );
+  }
   const files = await FilesetResolver.forVisionTasks(wasmRoot, true);
-  return GestureRecognizer.createFromOptions(files, {
-    baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
-    runningMode: 'VIDEO',
-    numHands: 1,
-  });
+  async function initialize(delegate: GestureDelegate) {
+    const recognizer = await GestureRecognizer.createFromOptions(files, {
+      baseOptions: { modelAssetBuffer: model, delegate },
+      runningMode: 'VIDEO',
+      numHands: 1,
+    });
+    try {
+      recognizer.recognizeForVideo(warmup, 0);
+      return { recognizer, delegate };
+    } catch (cause) {
+      recognizer.close();
+      throw cause;
+    }
+  }
+  try {
+    return await initialize('GPU');
+  } catch {
+    return initialize('CPU');
+  }
 }
 
 export function detectGesture(

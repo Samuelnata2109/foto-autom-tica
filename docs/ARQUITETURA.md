@@ -5,6 +5,10 @@ carrega os estilos do Tailwind. `src/App.tsx` define rotas, transições e foco 
 As telas em `src/pages/` compõem `src/components/` e usam a API de tela cheia via
 `src/hooks/`. Consulte o [fluxo e o design system](IDENTIDADE_VISUAL.md).
 
+A Etapa 10 reaproveita a página pública do QR para gerar o JPEG 9:16 no navegador.
+A fila privada usa a mesma Edge Function de fotos e a autenticação da equipe. A aprovação
+libera o download, e a publicação oficial é feita manualmente. [Fluxo de Stories](INTEGRACAO_INSTAGRAM.md)
+
 ## Estrutura
 
 | Caminho                                                   | Responsabilidade                                                                     |

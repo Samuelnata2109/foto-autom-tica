@@ -26,3 +26,5 @@ Com uma foto sintética em homologação, entre como operador, capture, confirme
 Revogue na cabine, reabra o mesmo link no celular e tente baixar por uma aba já aberta. Repita com exclusão antecipada. Para simular expiração, altere `uploaded_at` e `expires_at` em conjunto apenas na fixture descartável, mantendo o intervalo de 24 horas e o arquivo provisoriamente armazenado. Reabra o link e confirme o bloqueio. Verifique que a limpeza remove a foto e o registro associado.
 
 Execute `psql -v ON_ERROR_STOP=1 -f supabase/tests/booth_photo_shares.sql` em um banco descartável com as migrations aplicadas para testar os controles SQL. Os testes Vitest exercitam o handler e a interface com dados sintéticos. Registre a homologação física com celular e HTTPS no PR.
+
+A página pública também oferece a versão 9:16 e, com autorização separada, o envio para análise pela equipe. O prazo da foto permanece o mesmo. [Compartilhamento para Instagram Stories](INTEGRACAO_INSTAGRAM.md)

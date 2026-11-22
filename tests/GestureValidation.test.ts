@@ -16,9 +16,15 @@ describe('validação de gestos', () => {
     for (const gesture of [palm, victory, fist, thumb])
       expect(recognizedGesture(gesture)).toBe(gesture.name);
     expect(recognizedGesture({ name: 'Pointing_Up', score: 1 })).toBeNull();
-    expect(recognizedGesture({ name: 'Victory', score: 0.79 })).toBeNull();
+    expect(recognizedGesture({ name: 'Victory', score: 0.59 })).toBeNull();
     expect(recognizedGesture({ name: 'Victory', score: Number.NaN })).toBeNull();
     expect(recognizedGesture(null)).toBeNull();
+  });
+
+  it('confirma a palma com duas amostras consecutivas após 150 ms e progresso finito', () => {
+    const validation = new GestureValidation();
+    expect(validation.update(palm, 'idle', 0)).toMatchObject({ command: null, progress: 0 });
+    expect(validation.update(palm, 'idle', 150)).toMatchObject({ command: 'start5', progress: 1 });
   });
 
   it('restringe comandos ao estado da cabine', () => {
@@ -73,26 +79,25 @@ describe('validação de gestos', () => {
     validation.update(fist, 'countdown', 0);
     for (let time = 100; time < 800; time += 100) validation.update(fist, 'countdown', time);
     expect(validation.update(fist, 'countdown', 800).command).toBe('cancel');
-    validation.update(null, 'review', 2300);
-    validation.update(thumb, 'review', 2400);
-    const deadline = 2400 + gestureConfig.confirmationMs;
-    for (let time = 2500; time < deadline; time += 100) validation.update(thumb, 'review', time);
+    validation.update(null, 'review', 2700);
+    validation.update(thumb, 'review', 2800);
+    const deadline = 2800 + gestureConfig.confirmationMs;
+    for (let time = 2900; time < deadline; time += 100) validation.update(thumb, 'review', time);
     expect(validation.update(thumb, 'review', deadline).command).toBe('confirm');
   });
 });
 
 it('exige liberação observada antes de rearmar o mesmo gesto', () => {
   const validation = new GestureValidation();
-  for (let t = 0; t < 1500; t += 100) validation.update(palm, 'idle', t);
-  expect(validation.update(palm, 'idle', 1500).command).toBe('start5');
-  validation.update(null, 'countdown', 1600, 100, true, true);
-  validation.update(null, 'idle', 1700, 100, true);
+  validation.update(palm, 'idle', 0);
+  expect(validation.update(palm, 'idle', 150).command).toBe('start5');
+  validation.update(null, 'capturing', 160, 100, true, true);
+  validation.update(null, 'idle', 170, 100, true);
   for (let t = 1800; t < 4000; t += 100)
     expect(validation.update(palm, 'idle', t, 100, true).command).toBeNull();
   for (let t = 4000; t <= 4300; t += 100) validation.update(null, 'idle', t, 100, true);
-  for (let t = 4400; t < 5900; t += 100)
-    expect(validation.update(palm, 'idle', t, 100, true).command).toBeNull();
-  expect(validation.update(palm, 'idle', 5900, 100, true).command).toBe('start5');
+  expect(validation.update(palm, 'idle', 4400, 100, true).command).toBeNull();
+  expect(validation.update(palm, 'idle', 4550, 100, true).command).toBe('start5');
 });
 
 it('não combina movimentos breves intercalados com ausência da mão', () => {
@@ -107,8 +112,8 @@ it('cancela com 800 ms mesmo durante o cooldown da captura, sem repetir', () => 
   const v = new GestureValidation();
   for (let t = 0; t < gestureConfig.confirmationMs; t += 100) v.update(palm, 'idle', t);
   expect(v.update(palm, 'idle', gestureConfig.confirmationMs).command).toBe('start5');
-  for (let t = 2100; t < 2900; t += 100) expect(v.update(fist, 'countdown', t).command).toBeNull();
-  expect(v.update(fist, 'countdown', 2900).command).toBe('cancel');
+  for (let t = 250; t < 1050; t += 100) expect(v.update(fist, 'countdown', t).command).toBeNull();
+  expect(v.update(fist, 'countdown', 1050).command).toBe('cancel');
   for (let t = 3000; t <= 5000; t += 100) expect(v.update(fist, 'countdown', t).command).toBeNull();
 });
 
@@ -144,16 +149,14 @@ it('não conta perda de detecção ou pausas prolongadas na frequência reduzida
 
 it('preserva a confirmação diante de um quadro incerto com a mão visível a 2,4 Hz', () => {
   const validator = new GestureValidation();
-  const update = (detection: typeof palm | null, time: number) =>
-    validator.update(detection, 'idle', time, 420, true, true);
-  for (const time of [0, 420, 840]) expect(update(palm, time).command).toBeNull();
-  const expectedProgress = 840 / gestureConfig.confirmationMs;
-  expect(update(null, 1260)).toMatchObject({ command: null, progress: expectedProgress });
-  expect(update(palm, 1680)).toMatchObject({ command: null, progress: expectedProgress });
-  expect(update(palm, 2100).command).toBeNull();
-  expect(update(palm, 2520).command).toBe('start5');
-  for (const time of [2940, 3360, 3780, 4200, 4620, 5040])
-    expect(update(palm, time).command).toBeNull();
+  const update = (detection: typeof fist | null, time: number) =>
+    validator.update(detection, 'countdown', time, 420, true, true);
+  for (const time of [0, 420]) expect(update(fist, time).command).toBeNull();
+  const expectedProgress = 420 / gestureConfig.cancelConfirmationMs;
+  expect(update(null, 840)).toMatchObject({ command: null, progress: expectedProgress });
+  expect(update(fist, 1260)).toMatchObject({ command: null, progress: expectedProgress });
+  expect(update(fist, 1680).command).toBe('cancel');
+  for (const time of [2100, 2520, 2940, 3360]) expect(update(fist, time).command).toBeNull();
 });
 
 it.each([

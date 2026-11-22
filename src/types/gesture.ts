@@ -18,13 +18,14 @@ export type GestureDetection = {
   thumbMetrics?: ThumbMetrics | null;
 } | null;
 export type GestureCommand = 'start5' | 'start10' | 'cancel' | 'confirm';
+export type GestureDelegate = 'GPU' | 'CPU';
 
 export type GestureWorkerRequest =
   | { type: 'init'; wasmRoot: string; modelUrl: string }
   | { type: 'frame'; overlay?: boolean; frame: ImageBitmap; timestamp: number; id: number };
 
 export type GestureWorkerResponse =
-  | { type: 'ready'; startupMs: number }
+  | { type: 'ready'; startupMs: number; delegate: GestureDelegate }
   | { type: 'started'; id: number }
   | { type: 'result'; id: number; detection: GestureDetection; inferenceMs: number }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string; reason?: 'model' };

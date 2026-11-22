@@ -64,3 +64,8 @@ Vitest com jsdom verifica navegação e eventos DOM. O mínimo de Node.js acompa
 as versões suportadas por React Router e jsdom. A API `motion/mini` executa as
 animações compartilhadas sem introduzir o conflito de tipos das declarações React
 do Motion com a versão instalada de `csstype`.
+
+# Workers de visão e dependência de tipos
+
+- Os workers de gestos e de cenários pedem o carregador em módulo pelo segundo argumento `true` de `FilesetResolver.forVisionTasks`. O deploy verifica `vision_wasm_module_internal.js` e seu binário. O par clássico continua no artefato até validar uma build sem ele nos navegadores-alvo, incluindo o caminho sem GPU. A licença do MediaPipe acompanha os dois pares.
+- `@supabase/auth-js` 2.70.0 importa `SolanaSignInInput` e `SolanaSignInOutput` de `@solana/wallet-standard-features` em `dist/module/lib/types.d.ts`. A dependência de desenvolvimento resolve essa declaração durante a checagem de tipos.

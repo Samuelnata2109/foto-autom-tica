@@ -89,6 +89,22 @@ export function usePhotoCapture(
     schedule(duration, () => void capture(ticket));
   }
 
+  function captureNow(scenario: Scenario = 'original') {
+    if (operation.current || photoUrl.current) return;
+    setError('');
+    try {
+      if (!ready || !stream) throw new Error('Aguarde a câmera ficar pronta para tirar a foto.');
+      checkPhotoSource(videoRef.current, stream);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Câmera indisponível.');
+      return;
+    }
+
+    const ticket: CaptureTicket = { stream, controller: new AbortController(), scenario };
+    operation.current = ticket;
+    void capture(ticket);
+  }
+
   async function capture(ticket: CaptureTicket) {
     if (operation.current !== ticket) return;
 
@@ -168,6 +184,7 @@ export function usePhotoCapture(
     countdown,
     error,
     start,
+    captureNow,
     cancel,
     confirm,
     retake: reset,

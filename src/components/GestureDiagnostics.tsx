@@ -95,7 +95,15 @@ export function GestureDiagnostics({
           <p>
             Timeouts: {ai.incidents.timeouts} · outras falhas: {ai.incidents.failures}
           </p>
-          {ai.workerError && <p>IA suspensa. Motivo: {ai.workerError}</p>}
+          {ai.incidents.timeouts > 0 && (
+            <p>
+              Timeouts por estágio{' '}
+              {Object.entries(ai.incidents.timeoutStages)
+                .map(([stage, count]) => `${stage} (${count})`)
+                .join(' · ')}
+            </p>
+          )}
+          {ai.workerError && <p>Último erro do worker: {ai.workerError}</p>}
           <p>
             Modelo: {d?.raw ?? '—'} · confiança {d?.rawScore?.toFixed(2) ?? '—'} · geometria:{' '}
             {d?.geometry ?? '—'}

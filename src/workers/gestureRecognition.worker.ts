@@ -1,4 +1,8 @@
-import { createGestureRecognizer, detectGesture } from '../services/gestureRecognizer';
+import {
+  createGestureRecognizer,
+  detectGesture,
+  GestureModelLoadError,
+} from '../services/gestureRecognizer';
 import type { GestureWorkerRequest, GestureWorkerResponse } from '../types/gesture';
 import type { GestureRecognizer } from '@mediapipe/tasks-vision';
 
@@ -10,12 +14,16 @@ self.onmessage = async (event: MessageEvent<GestureWorkerRequest>) => {
   try {
     if (message.type === 'init') {
       const startedAt = performance.now();
-      recognizer = await createGestureRecognizer(message.wasmRoot, message.modelUrl);
       // Warm the graph under the initialization deadline before accepting live frames.
       const warmup = new OffscreenCanvas(32, 32);
       warmup.getContext('2d')?.fillRect(0, 0, 32, 32);
-      recognizer.recognizeForVideo(warmup, 0);
-      send({ type: 'ready', startupMs: performance.now() - startedAt });
+      const initialized = await createGestureRecognizer(message.wasmRoot, message.modelUrl, warmup);
+      recognizer = initialized.recognizer;
+      send({
+        type: 'ready',
+        startupMs: performance.now() - startedAt,
+        delegate: initialized.delegate,
+      });
     } else {
       try {
         if (!recognizer) throw new Error('Modelo ainda não carregado.');
@@ -41,6 +49,7 @@ self.onmessage = async (event: MessageEvent<GestureWorkerRequest>) => {
     send({
       type: 'error',
       message: error instanceof Error ? error.message : 'Falha na inferência.',
+      reason: error instanceof GestureModelLoadError ? 'model' : undefined,
     });
   }
 };

@@ -102,7 +102,7 @@ async function advance(milliseconds: number) {
 
 describe('Sistema fotográfico', () => {
   it.each([
-    ['start5', 0],
+    ['start5', 5_000],
     ['start10', 10_000],
   ] as const)('encaminha %s para captura com espera de %i ms', async (command, wait) => {
     const useRecognition = recognition.useGestureRecognition;
@@ -116,11 +116,10 @@ describe('Sistema fotográfico', () => {
       dispatch!(command);
       dispatch!(command);
     });
-    if (wait) {
-      await advance(wait - 1);
-      expect(drawImage).not.toHaveBeenCalled();
-      await advance(1);
-    }
+    expect(get('.countdown__value').textContent).toContain(String(wait / 1_000));
+    await advance(wait - 1);
+    expect(drawImage).not.toHaveBeenCalled();
+    await advance(1);
     expect(drawImage).toHaveBeenCalledExactlyOnceWith(video, 0, 0, 1280, 720);
     expect(host.textContent).toContain('Revisão da foto');
   });

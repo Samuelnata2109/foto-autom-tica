@@ -34,7 +34,7 @@ Consulte o [guia de configuração e validação](docs/ARMAZENAMENTO_PRIVADO.md)
 Em `npm run dev`, **Prévias de desenvolvimento** abre os exemplos de contagem, revisão e
 compartilhamento. O reconhecimento local de gestos da Etapa 05 pode ser ativado na cabine; os comandos manuais continuam disponíveis.
 
-Para testar gestos, execute `npm run setup:gesture-model` após instalar as dependências. O comando baixa o arquivo `public/models/gesture_recognizer.task`, que é ignorado pelo Git. Abra a cabine, autorize a câmera e ative o reconhecimento. A palma aberta tira a foto assim que o gesto é confirmado, o sinal de paz inicia 10 s, o punho fechado cancela a contagem e o polegar para cima confirma a foto em revisão. Consulte [RECONHECIMENTO_GESTOS.md](docs/RECONHECIMENTO_GESTOS.md) para parâmetros e validação física.
+Para testar gestos, execute `npm run setup:gesture-model` após instalar as dependências. O comando baixa o arquivo `public/models/gesture_recognizer.task`, que é ignorado pelo Git. Abra a cabine, autorize a câmera e ative o reconhecimento. A palma aberta inicia uma contagem de 5 s, o sinal de paz inicia 10 s, o punho fechado cancela a contagem e o polegar para cima confirma a foto em revisão. Consulte [RECONHECIMENTO_GESTOS.md](docs/RECONHECIMENTO_GESTOS.md) para parâmetros e validação física.
 As prévias ficam fora do build de produção.
 
 ## Verificações

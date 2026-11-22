@@ -12,7 +12,7 @@
 
 O participante ativa a IA após abrir a câmera. O hook reutiliza o `HTMLVideoElement` e o `MediaStream` já abertos. O worker recebe um `ImageBitmap` proporcional de até 320 px e analisa no máximo uma mão. Ele tenta GPU primeiro e usa CPU/WASM no próprio worker se a criação ou o aquecimento com GPU falhar. Quadros novos são amostrados conforme a carga, com teto de 15 Hz e uma inferência pendente. O diagnóstico informa o delegate realmente utilizado.
 
-`src/config/gestureConfig.ts` concentra os limiares, os tempos de confirmação e as tolerâncias. O tempo vem de `performance.now()`, sem supor frequência fixa de quadros. Trocas de gesto, de estado e perdas prolongadas reiniciam a confirmação. Em `idle`, a palma aberta captura imediatamente após a confirmação do gesto e o sinal de paz inicia 10 s. Em `countdown`, o punho fechado cancela e, em `review`, o polegar para cima confirma. `capturing` e `confirmed` não aceitam comandos. Os botões manuais continuam oferecendo 5 e 10 s.
+`src/config/gestureConfig.ts` concentra os limiares, os tempos de confirmação e as tolerâncias. O tempo vem de `performance.now()`, sem supor frequência fixa de quadros. Trocas de gesto, de estado e perdas prolongadas reiniciam a confirmação. Em `idle`, a palma aberta inicia 5 s após a confirmação do gesto e o sinal de paz inicia 10 s. Em `countdown`, o punho fechado cancela e, em `review`, o polegar para cima confirma. `capturing` e `confirmed` não aceitam comandos. Os botões manuais continuam oferecendo 5 e 10 s.
 
 A inferência é suspensa quando a IA está desligada, a câmera indisponível, a página oculta, o usuário sai da cabine ou o estado não permite comandos. Ao sair, o worker/modelo é encerrado. Quadros usados para inferência não são armazenados ou transmitidos. O JPEG continua na resolução original da câmera.
 
@@ -22,7 +22,7 @@ Com webcam integrada e DroidCam via Wi-Fi, em `localhost` ou HTTPS:
 
 1. Iniciar a cabine, ativar a IA e confirmar carregamento local do modelo e WASM no navegador.
 2. Testar cada gesto pela duração da configuração vigente, além de gestos desconhecidos, baixa iluminação, mãos múltiplas e distâncias de evento.
-3. Verificar a captura direta por palma, os 10 s por sinal de paz, o cancelamento pelo punho e a confirmação pelo polegar. Manter a palma aberta e voltar à câmera para verificar que a mesma mão precisa ser liberada antes de uma nova foto.
+3. Verificar a contagem de 5 s por palma, os 10 s por sinal de paz, o cancelamento pelo punho e a confirmação pelo polegar. Manter a palma aberta e voltar à câmera para verificar que a mesma mão precisa ser liberada antes de uma nova foto.
 4. Trocar e desconectar a câmera, desligar a IA, ocultar a aba e sair da cabine durante carregamento/inferência.
 5. Comparar fluidez e latência do vídeo com IA ligada e desligada. Em ambiente de teste, pause o worker em uma inferência com o depurador por mais de 3 s. Confira o estágio no painel, a recriação e a retomada automática. Com três timeouts consecutivos sem resultado válido, confira a suspensão e teste **Tentar reativar IA**.
 6. Confirmar todos os botões manuais e ausência de chamadas de rede com quadros ou coordenadas.
@@ -85,7 +85,7 @@ A verificação anterior já usava landmarks 3D, mas exigia ângulo e alcance es
 
 | Gesto             | Confiança com geometria compatível | Confirmação mínima | Comando                    |
 | ----------------- | ---------------------------------: | -----------------: | -------------------------- |
-| Palma aberta      |                               0,50 |             150 ms | Captura sem contagem       |
+| Palma aberta      |                               0,50 |             150 ms | Inicia 5 s                 |
 | Sinal de paz      |                               0,50 |             150 ms | Inicia 10 s                |
 | Punho fechado     |                               0,66 |              0,8 s | Cancela a contagem         |
 | Polegar para cima |                               0,65 |             150 ms | Confirma a foto na revisão |

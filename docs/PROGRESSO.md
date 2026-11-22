@@ -245,3 +245,9 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Arquivos** configuração, geometria, recognizer, worker, hook, painel de diagnóstico e cinco arquivos de testes. O workflow único publica `dist` a partir de `develop` e aceita execução manual. Os dois workflows legados foram removidos da branch. Mantidos o WASM clássico e a dependência de tipos do Supabase. Nenhuma dependência nova.
 - **Verificações** tipagem, lint, build e formatação aprovados. Os 149 testes de 13 arquivos passaram com `npm test -- --pool=forks --maxWorkers=1 --testTimeout=45000`. A execução paralela teve timeouts de inicialização no Vitest, por isso a validação completa foi feita com um processo por vez. O `dist` contém o modelo, o Worker e os recursos WASM de módulo.
 - **Homologação** validar com webcam e DroidCam os quatro gestos, a ausência de disparos repetidos, os botões manuais, o delegate e a retomada após timeout. Conferir a publicação HTTPS e o carregamento do modelo na subpasta do Pages. Revisão e integração pendentes. Commits e PR no relatório de entrega.
+
+### 21/11/2026 — Contagem de 5 s por palma aberta
+
+- **Ajuste** a palma aberta passa a chamar o temporizador existente de 5 s com o cenário selecionado. A foto é tirada ao terminar a contagem, que pode ser cancelada pelo punho fechado ou pelo botão. Guia de gestos, README e documentação atualizados. Nenhuma dependência nova.
+- **Verificações** tipagem, lint, build e formatação aprovados. A execução completa passou em 148 dos 149 casos, incluindo o disparo aos 5.000 ms. O caso restante esperava o aviso antigo. Após atualizar a asserção, os 23 testes de reconhecimento passaram na reexecução.
+- **Homologação** conferir a contagem e o cancelamento com webcam e DroidCam. Alteração na branch `fix/gesture-instant-capture`, no [PR #24](https://github.com/Samuelnata2109/foto-autom-tica/pull/24), aguardando revisão.

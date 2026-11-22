@@ -479,15 +479,9 @@ it.each([
     } else {
       expect(host.textContent).toContain('Gesto confirmado');
       const nextPhase =
-        command === 'cancel'
-          ? 'idle'
-          : command === 'confirm'
-            ? 'confirmed'
-            : command === 'start5'
-              ? 'capturing'
-              : 'countdown';
+        command === 'cancel' ? 'idle' : command === 'confirm' ? 'confirmed' : 'countdown';
       const message = {
-        start5: 'Captura imediata iniciada',
+        start5: 'Contagem de 5 s iniciada',
         start10: 'Contagem de 10 s iniciada',
         cancel: 'Contagem cancelada',
         confirm: 'Foto confirmada',

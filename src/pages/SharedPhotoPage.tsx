@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { Brand } from '../components/Brand';
 import { Button } from '../components/Button';
+import { StoryOptions } from '../components/StoryOptions';
 import { PhotoStorageError, readSharedPhoto } from '../services/privatePhotoStorage';
+import { downloadJpeg } from '../services/storyImage';
 
 const invalid = 'Este link está inválido, expirou ou foi revogado.';
 
@@ -72,14 +74,7 @@ function PhotoViewer({ secret }: { secret: string }) {
       const { image, deadline } = await readSharedPhoto(secret, controller.signal);
       if (controller.signal.aborted) return;
       if (deadline <= performance.now()) throw new PhotoStorageError(404);
-      const url = URL.createObjectURL(image);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'ai-photo-booth.jpg';
-      document.body.append(link);
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      link.click();
-      link.remove();
+      downloadJpeg(image, 'ai-photo-booth.jpg');
     } catch (failure) {
       if (!controller.signal.aborted) {
         const message = failureMessage(failure);
@@ -100,7 +95,7 @@ function PhotoViewer({ secret }: { secret: string }) {
         <Brand />
         <section className="photo-review" aria-labelledby="shared-photo-heading">
           <h1 id="shared-photo-heading" tabIndex={-1}>
-            Sua foto
+            {preview ? 'Sua foto está pronta!' : 'Sua foto'}
           </h1>
           {loading && <p role="status">Carregando fotografia…</p>}
           {error && <p role="alert">{error}</p>}
@@ -135,6 +130,16 @@ function PhotoViewer({ secret }: { secret: string }) {
             </Button>
           )}
         </section>
+        {preview && (
+          <StoryOptions
+            secret={secret}
+            deadline={preview.deadline}
+            onUnavailable={() => {
+              setPreview(null);
+              setError(invalid);
+            }}
+          />
+        )}
       </div>
     </main>
   );

@@ -168,7 +168,15 @@ it('revoga antes de remover e repete exclus찾o sem tocar em outras sess천es', as
 it('limpeza trata 처rf찾os, respeita lease concorrente e deixa falhas para a pr처xima varredura', async () => {
   const { admin, typed } = backend();
   admin.rpc.mockResolvedValueOnce(null);
-  await expect(sweepPhotos(typed)).resolves.toEqual({ busy: true, removed: 0, failed: 0 });
+  await expect(sweepPhotos(typed)).resolves.toEqual({
+    busy: true,
+    removed: 0,
+    failed: 0,
+    completedWithoutErrors: false,
+    expiredBacklog: null,
+    expiredQueueDrained: null,
+  });
+  expect(admin.rpc).toHaveBeenCalledTimes(1);
   expect(admin.remove).not.toHaveBeenCalled();
   const row = { id, path: 'photo.jpg', token: 'claim' };
   admin.rpc.mockImplementation(
@@ -181,17 +189,56 @@ it('limpeza trata 처rf찾os, respeita lease concorrente e deixa falhas para a pr�
       })[name as 'booth_claim_sweep'],
   );
   admin.remove.mockRejectedValueOnce(new Error('storage offline'));
-  await expect(sweepPhotos(typed)).resolves.toEqual({ busy: false, removed: 1, failed: 1 });
+  await expect(sweepPhotos(typed)).resolves.toMatchObject({
+    busy: false,
+    removed: 1,
+    failed: 1,
+    completedWithoutErrors: false,
+  });
   expect(admin.rpc).toHaveBeenCalledWith('booth_ack_delete', {
     p_id: id,
     p_token: 'claim',
     p_removed: false,
   });
   expect(admin.remove).toHaveBeenCalledWith('orphan.jpg');
-  await expect(sweepPhotos(typed)).resolves.toEqual({ busy: false, removed: 2, failed: 0 });
+  await expect(sweepPhotos(typed)).resolves.toMatchObject({
+    busy: false,
+    removed: 2,
+    failed: 0,
+    completedWithoutErrors: true,
+  });
   expect(admin.rpc).toHaveBeenCalledWith('booth_ack_delete', {
     p_id: id,
     p_token: 'claim',
     p_removed: true,
   });
+});
+
+it.each([
+  { backlog: { count: 1, oldestOverdueSeconds: 120 }, drained: false },
+  { backlog: { count: 0, oldestOverdueSeconds: null }, drained: true },
+  { backlog: null, drained: null },
+])('distingue limpeza sem erros do estado da fila ($drained)', async ({ backlog, drained }) => {
+  const { admin, typed } = backend();
+  admin.rpc
+    .mockResolvedValueOnce('sweep')
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce(true);
+  if (backlog) admin.rpc.mockResolvedValueOnce(backlog);
+  else admin.rpc.mockRejectedValueOnce(new Error('metrics offline'));
+
+  await expect(sweepPhotos(typed)).resolves.toEqual({
+    busy: false,
+    removed: 0,
+    failed: 0,
+    completedWithoutErrors: true,
+    expiredBacklog: backlog,
+    expiredQueueDrained: drained,
+  });
+  expect(admin.rpc).toHaveBeenNthCalledWith(4, 'booth_finish_sweep', {
+    p_token: 'sweep',
+    p_failures: 0,
+  });
+  expect(admin.rpc).toHaveBeenNthCalledWith(5, 'booth_expired_photo_backlog');
 });

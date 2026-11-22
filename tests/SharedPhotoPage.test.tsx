@@ -4,9 +4,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { HashRouter, MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
+import { OfficialStoryQueue } from '../src/components/OfficialStoryQueue';
 import { SharedPhotoPage } from '../src/pages/SharedPhotoPage';
 import { photoShareLink } from '../src/services/photoShareLink';
 import * as storage from '../src/services/privatePhotoStorage';
+import * as storyImage from '../src/services/storyImage';
+import * as storyStorage from '../src/services/storyStorage';
 
 const secret = 'ab'.repeat(32);
 const image = new Blob(['fixture'], { type: 'image/jpeg' });
@@ -25,11 +28,13 @@ beforeEach(() => {
     },
   );
   host = document.createElement('div');
+  document.body.append(host);
   root = createRoot(host);
 });
 
 afterEach(async () => {
   await act(async () => root.unmount());
+  host.remove();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
@@ -72,7 +77,7 @@ it('abre o link do QR na rota pública sob a subpasta do GitHub Pages', async ()
       ),
     );
     expect(read).toHaveBeenCalledExactlyOnceWith(secret, expect.any(AbortSignal));
-    expect(host.querySelector('h1')?.textContent).toBe('Sua foto');
+    expect(host.querySelector('h1')?.textContent).toBe('Sua foto está pronta!');
     expect(host.querySelector('img.shared-photo-page__image')).not.toBeNull();
   } finally {
     window.history.replaceState(null, '', originalUrl);
@@ -116,4 +121,84 @@ it('mostra erro temporário e permite uma nova tentativa', async () => {
   await act(async () => host.querySelector('button')!.click());
   expect(host.querySelector('[role=alert]')).toBeNull();
   expect(host.querySelector('img.shared-photo-page__image')).not.toBeNull();
+});
+
+function button(label: string) {
+  const match = Array.from(host.querySelectorAll('button')).find(
+    (item) => item.textContent.trim() === label,
+  );
+  if (!match) throw new Error('Botão ausente: ' + label);
+  return match;
+}
+
+const story = new File(['story'], 'ai-photo-booth-story.jpg', { type: 'image/jpeg' });
+
+it('gera a prévia sob demanda e disponibiliza download sem Web Share', async () => {
+  vi.spyOn(storage, 'readSharedPhoto').mockImplementation(async () => photo());
+  const compose = vi.spyOn(storyImage, 'composeStory').mockResolvedValue(story);
+  const download = vi.spyOn(storyImage, 'downloadJpeg').mockImplementation(() => {});
+  await open();
+  expect(compose).not.toHaveBeenCalled();
+  await act(async () => button('Compartilhar nos meus Stories').click());
+  expect(compose).toHaveBeenCalledExactlyOnceWith(image);
+  expect(host.querySelector('.story-preview img')).not.toBeNull();
+  expect(host.textContent).not.toContain('Abrir compartilhamento');
+  await act(async () => button('Baixar Story em JPEG').click());
+  expect(download).toHaveBeenCalledExactlyOnceWith(story, story.name);
+});
+
+it.each(['received', 'duplicate'] as const)(
+  'exige novo consentimento e mostra o resultado %s',
+  async (result) => {
+    vi.spyOn(storage, 'readSharedPhoto').mockImplementation(async () => photo());
+    vi.spyOn(storyImage, 'composeStory').mockResolvedValue(story);
+    const submit = vi.spyOn(storyStorage, 'submitOfficialStory').mockResolvedValue(result);
+    await open();
+    await act(async () => button('Enviar para os Stories oficiais').click());
+    expect(button('Confirmar envio para análise').disabled).toBe(true);
+    expect(submit).not.toHaveBeenCalled();
+    await act(async () => host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click());
+    await act(async () => button('Confirmar envio para análise').click());
+    expect(submit).toHaveBeenCalledExactlyOnceWith(secret, true, expect.any(AbortSignal));
+    expect(host.textContent).toContain(
+      result === 'received' ? 'Solicitação recebida' : 'Já existe uma solicitação',
+    );
+  },
+);
+
+it('remove a prévia e as opções de Story quando o link perde acesso', async () => {
+  vi.spyOn(storage, 'readSharedPhoto')
+    .mockResolvedValueOnce(photo())
+    .mockRejectedValueOnce(new storage.PhotoStorageError(404));
+  await open();
+  await act(async () => button('Enviar para os Stories oficiais').click());
+  expect(host.querySelector('[role=alert]')?.textContent).toContain('expirou ou foi revogado');
+  expect(host.querySelector('.story-section')).toBeNull();
+});
+
+it('registra a publicação manual somente após confirmação do operador', async () => {
+  const entry: storyStorage.StoryEntry = {
+    id: 'story-id',
+    createdAt: new Date().toISOString(),
+    status: 'approved',
+    available: true,
+  };
+  vi.spyOn(storyStorage, 'listOfficialStories').mockResolvedValue({
+    entries: [entry],
+    more: false,
+  });
+  vi.spyOn(storyStorage, 'readOfficialStory').mockImplementation(async () => photo());
+  const update = vi.spyOn(storyStorage, 'updateOfficialStory').mockResolvedValue(undefined);
+  await act(async () => root.render(<OfficialStoryQueue token="operator" onExpired={vi.fn()} />));
+  await act(async () => button('Visualizar foto').click());
+  await act(async () => button('Marcar como publicada').click());
+  expect(update).not.toHaveBeenCalled();
+  await act(async () => button('Sim, já foi publicada').click());
+  expect(update).toHaveBeenCalledExactlyOnceWith(
+    'operator',
+    entry.id,
+    'publish',
+    expect.any(AbortSignal),
+  );
+  expect(host.textContent).toContain('Publicação manual registrada');
 });

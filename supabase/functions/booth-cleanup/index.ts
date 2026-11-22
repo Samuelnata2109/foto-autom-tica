@@ -20,7 +20,10 @@ Deno.serve(async (request) => {
   if (difference) return new Response(null, { status: 401 });
   try {
     const result = await sweepPhotos(admin);
-    if (result.failed) console.warn('Booth cleanup incomplete', { failed: result.failed });
+    if (!result.busy) {
+      if (result.failed || result.expiredBacklog === null) console.warn('Booth cleanup', result);
+      else console.info('Booth cleanup', result);
+    }
     return Response.json(result, { status: result.failed ? 503 : 200 });
   } catch {
     console.error('Booth cleanup execution failed');

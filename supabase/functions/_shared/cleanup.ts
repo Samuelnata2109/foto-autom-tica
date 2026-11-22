@@ -1,6 +1,7 @@
 import type { Admin } from './storage.ts';
 
 type Candidate = { id: string; path: string; token: string };
+type ExpiredBacklog = { count: number; oldestOverdueSeconds: number | null };
 
 export async function purgePhoto(admin: Admin, row: Candidate) {
   let removed = false;
@@ -25,7 +26,15 @@ export async function purgeRequestedPhoto(admin: Admin, id: string) {
 
 export async function sweepPhotos(admin: Admin) {
   const token = await admin.rpc<string | null>('booth_claim_sweep');
-  if (!token) return { busy: true, removed: 0, failed: 0 };
+  if (!token)
+    return {
+      busy: true,
+      removed: 0,
+      failed: 0,
+      completedWithoutErrors: false,
+      expiredBacklog: null,
+      expiredQueueDrained: null,
+    };
   let failed = 0;
   let removed = 0;
   const batch = async <T>(items: T[], remove: (item: T) => Promise<boolean>) => {
@@ -49,5 +58,19 @@ export async function sweepPhotos(admin: Admin) {
   } finally {
     await admin.rpc('booth_finish_sweep', { p_token: token, p_failures: failed });
   }
-  return { busy: false, removed, failed };
+  let expiredBacklog: ExpiredBacklog | null = null;
+  try {
+    const backlog = await admin.rpc<ExpiredBacklog>('booth_expired_photo_backlog');
+    expiredBacklog = { count: backlog.count, oldestOverdueSeconds: backlog.oldestOverdueSeconds };
+  } catch {
+    // Observability is separate from the sweep outcome recorded above.
+  }
+  return {
+    busy: false,
+    removed,
+    failed,
+    completedWithoutErrors: failed === 0,
+    expiredBacklog,
+    expiredQueueDrained: expiredBacklog === null ? null : expiredBacklog.count === 0,
+  };
 }

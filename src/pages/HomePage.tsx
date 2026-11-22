@@ -32,8 +32,8 @@ export function HomePage() {
             </li>
           </ul>
           {storageConfigured && (
-            <ButtonLink to="/equipe/stories" variant="quiet">
-              Fila dos Stories oficiais
+            <ButtonLink to="/equipe" variant="quiet">
+              Painel da equipe
             </ButtonLink>
           )}
         </section>

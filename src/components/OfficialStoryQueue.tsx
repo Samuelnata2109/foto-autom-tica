@@ -42,7 +42,11 @@ function StoryDetails({
   onExpired: () => void;
   onUpdate: (decision: StoryDecision) => void;
 }) {
-  const [preview, setPreview] = useState<{ url: string; deadline: number } | null>(null);
+  const [preview, setPreview] = useState<{
+    url: string;
+    deadline: number;
+    release: () => void;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -53,11 +57,31 @@ function StoryDetails({
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
     const controller = new AbortController();
+    let releasePreview: (() => void) | undefined;
     void readOfficialStory(token, entry.id, 'preview', controller.signal)
       .then(({ image, deadline }) => {
         if (controller.signal.aborted) return;
         if (deadline <= performance.now()) throw new PhotoStorageError(404);
-        setPreview({ url: URL.createObjectURL(image), deadline });
+        const url = URL.createObjectURL(image);
+        const expire = () => {
+          release();
+          setPreview(null);
+          setError(unavailableMessage);
+        };
+        const check = () => {
+          if (performance.now() >= deadline) expire();
+        };
+        const timer = window.setTimeout(expire, Math.max(0, deadline - performance.now()));
+        const release = () => {
+          if (!releasePreview) return;
+          URL.revokeObjectURL(url);
+          window.clearTimeout(timer);
+          document.removeEventListener('visibilitychange', check);
+          releasePreview = undefined;
+        };
+        releasePreview = release;
+        document.addEventListener('visibilitychange', check);
+        setPreview({ url, deadline, release });
       })
       .catch((failure: unknown) => {
         if (controller.signal.aborted) return;
@@ -67,30 +91,16 @@ function StoryDetails({
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
-    return () => controller.abort();
-  }, [token, entry.id, onExpired, attempt]);
-
-  useEffect(() => {
-    if (!preview) return;
-    const expire = () => {
-      setPreview(null);
-      setError(unavailableMessage);
-    };
-    const check = () => {
-      if (performance.now() >= preview.deadline) expire();
-    };
-    const timer = window.setTimeout(expire, Math.max(0, preview.deadline - performance.now()));
-    document.addEventListener('visibilitychange', check);
     return () => {
-      URL.revokeObjectURL(preview.url);
-      window.clearTimeout(timer);
-      document.removeEventListener('visibilitychange', check);
+      controller.abort();
+      releasePreview?.();
     };
-  }, [preview]);
+  }, [token, entry.id, onExpired, attempt]);
 
   async function perform(action: StoryDecision | 'download') {
     if (!preview || pending.current) return;
     if (performance.now() >= preview.deadline) {
+      preview.release();
       setPreview(null);
       setError(unavailableMessage);
       return;
@@ -116,7 +126,10 @@ function StoryDetails({
       if (controller.signal.aborted) return;
       if (failure instanceof PhotoStorageError && failure.status === 401) onExpired();
       else {
-        if (failure instanceof PhotoStorageError && failure.status === 404) setPreview(null);
+        if (failure instanceof PhotoStorageError && failure.status === 404) {
+          preview.release();
+          setPreview(null);
+        }
         setError(errorMessage(failure));
       }
     } finally {

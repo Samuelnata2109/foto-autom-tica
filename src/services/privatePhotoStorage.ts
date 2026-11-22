@@ -30,13 +30,21 @@ function credentials() {
   return supabaseConfig;
 }
 
-export async function signInOperator(email: string, password: string, signal: AbortSignal) {
+export type OperatorSession = { token: string; expiresAt: number };
+
+export async function signInOperator(
+  email: string,
+  password: string,
+  signal: AbortSignal,
+): Promise<OperatorSession> {
   const auth = await createAuthClient(signal);
   const { data, error } = await auth.signInWithPassword({ email, password });
   if (error || !data.session) throw new PhotoStorageError(error?.status ?? 401);
-  const token = data.session.access_token;
+  const { access_token: token, expires_at, expires_in } = data.session;
+  const expiresAt = (expires_at ?? Math.floor(Date.now() / 1000) + expires_in) * 1000;
   await callStorage(token, 'operator', {}, signal);
-  return token;
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) throw new PhotoStorageError(401);
+  return { token, expiresAt };
 }
 
 export async function callStorage(

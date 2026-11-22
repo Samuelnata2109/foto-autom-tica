@@ -16,8 +16,8 @@ type Reservation =
   | { state: 'reserved'; path: string; token: string }
   | { state: 'limited' | 'unavailable' | 'paused' };
 
-type SharedPhoto =
-  { state: 'ready'; path: string; expires_at: string; remaining_ms: number } | { state: 'limited' };
+type PhotoDelivery = { state: 'ready'; path: string; expires_at: string; remaining_ms: number };
+type SharedPhoto = PhotoDelivery | { state: 'limited' };
 
 async function shareHash(request: Request) {
   if (request.headers.get('content-type') !== 'text/plain') return null;
@@ -42,22 +42,28 @@ export function photoHandler(
       Vary: 'Origin',
     });
     if (origin && permitted) headers.set('Access-Control-Allow-Origin', origin);
-    const json = (status: number, code?: string) =>
-      new Response(code ? JSON.stringify({ code }) : null, {
+    const json = (status: number, data?: string | object) =>
+      new Response(data ? JSON.stringify(typeof data === 'string' ? { code: data } : data) : null, {
         status,
         headers: { ...Object.fromEntries(headers), 'Content-Type': 'application/json' },
       });
-    const receipt = (expiresAt: string, status: number) =>
-      new Response(JSON.stringify({ expiresAt }), {
-        status,
-        headers: { ...Object.fromEntries(headers), 'Content-Type': 'application/json' },
-      });
+    const photoResponse = (image: Blob, verified: PhotoDelivery) => {
+      headers.set('Content-Type', 'image/jpeg');
+      headers.set('X-Booth-Expires', verified.expires_at);
+      headers.set('X-Booth-Remaining-Ms', String(verified.remaining_ms));
+      headers.set('Access-Control-Expose-Headers', 'X-Booth-Expires, X-Booth-Remaining-Ms');
+      return new Response(image, { headers });
+    };
+    const limited = () => {
+      headers.set('Retry-After', '60');
+      return json(429, 'limit');
+    };
     if (!permitted) return json(403, 'origin');
     if (request.method === 'OPTIONS') {
       headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
       headers.set(
         'Access-Control-Allow-Headers',
-        'apikey, authorization, content-type, x-booth-action, x-booth-consent, x-booth-photo, x-booth-session, x-booth-proof, x-booth-scenario',
+        'apikey, authorization, content-type, x-booth-action, x-booth-consent, x-booth-photo, x-booth-session, x-booth-proof, x-booth-scenario, x-booth-story, x-booth-offset, x-booth-decision, x-booth-purpose',
       );
       return new Response(null, { status: 204, headers });
     }
@@ -65,34 +71,82 @@ export function photoHandler(
     try {
       const get = (name: string) => request.headers.get('x-booth-' + name) ?? '';
       const action = get('action');
+      if (action === 'story-create') {
+        const consent = get('consent');
+        if (consent !== 'official-stories-v1') return json(400, 'consent');
+        const hash = await shareHash(request);
+        if (!hash) return json(404, 'unavailable');
+        const result = await admin.rpc<string>('booth_create_story', {
+          p_hash: hash,
+          p_consent: consent,
+        });
+        if (result === 'limited') return limited();
+        if (result === 'created') return json(201, { duplicate: false });
+        if (result === 'exists') return json(200, { duplicate: true });
+        return json(404, 'unavailable');
+      }
       if (action === 'share-read') {
         const hash = await shareHash(request);
         if (!hash) return json(404, 'unavailable');
         const lookup = (consume: boolean) =>
           admin.rpc<SharedPhoto | null>('booth_shared_photo', { p_hash: hash, p_consume: consume });
         const share = await lookup(true);
-        if (share?.state === 'limited') {
-          headers.set('Retry-After', '60');
-          return json(429, 'limit');
-        }
+        if (share?.state === 'limited') return limited();
         if (!share || share.remaining_ms <= 0) return json(404, 'unavailable');
         const image = await admin.download(share.path);
         const verified = image && (await lookup(false));
         if (
+          !image ||
           verified?.state !== 'ready' ||
           verified.path !== share.path ||
           verified.remaining_ms <= 0
         )
           return json(404, 'unavailable');
-        headers.set('Content-Type', 'image/jpeg');
-        headers.set('X-Booth-Expires', verified.expires_at);
-        headers.set('X-Booth-Remaining-Ms', String(verified.remaining_ms));
-        headers.set('Access-Control-Expose-Headers', 'X-Booth-Expires, X-Booth-Remaining-Ms');
-        return new Response(image, { headers });
+        return photoResponse(image, verified);
       }
       const operator = await authorize(request.headers.get('authorization'));
       if (!operator) return json(401, 'operator');
       if (action === 'operator') return json(204);
+      if (action === 'story-list' || action === 'story-read' || action === 'story-update') {
+        if (!(await admin.rpc<boolean>('booth_story_operator_limit', { p_operator: operator })))
+          return limited();
+        if (action === 'story-list') {
+          const offset = get('offset');
+          if (!/^\d{1,5}$/.test(offset)) return json(400, 'offset');
+          const entries = await admin.rpc<unknown[]>('booth_list_stories', {
+            p_offset: Number(offset),
+          });
+          return json(200, entries);
+        }
+        const story = get('story');
+        if (!uuid.test(story)) return json(404, 'unavailable');
+        if (action === 'story-update') {
+          const decision = get('decision');
+          if (!['approve', 'reject', 'publish'].includes(decision)) return json(400, 'decision');
+          const result = await admin.rpc<string>('booth_update_story', {
+            p_id: story,
+            p_operator: operator,
+            p_decision: decision,
+          });
+          if (result === 'updated') return json(204);
+          if (result === 'conflict') return json(409, 'state');
+          return json(404, 'unavailable');
+        }
+        const purpose = get('purpose');
+        if (purpose !== 'preview' && purpose !== 'download') return json(400, 'purpose');
+        const lookup = () =>
+          admin.rpc<PhotoDelivery | null>('booth_story_photo', {
+            p_id: story,
+            p_download: purpose === 'download',
+          });
+        const entry = await lookup();
+        if (!entry || entry.remaining_ms <= 0) return json(404, 'unavailable');
+        const image = await admin.download(entry.path);
+        const verified = image && (await lookup());
+        if (!image || !verified || verified.path !== entry.path || verified.remaining_ms <= 0)
+          return json(404, 'unavailable');
+        return photoResponse(image, verified);
+      }
       const id = get('photo');
       const session = get('session');
       const secret = get('proof');
@@ -112,7 +166,7 @@ export function photoHandler(
             ...scope,
             p_hash: hash,
           });
-          return expiresAt ? receipt(expiresAt, 201) : json(404, 'unavailable');
+          return expiresAt ? json(201, { expiresAt }) : json(404, 'unavailable');
         }
         case 'share-revoke':
           return (await admin.rpc<boolean>('booth_revoke_share', scope))
@@ -134,7 +188,7 @@ export function photoHandler(
             p_height: dimensions.height,
             p_consent: '24h-v1',
           });
-          if (held.state === 'ready') return receipt(held.expires_at, 200);
+          if (held.state === 'ready') return json(200, { expiresAt: held.expires_at });
           if (held.state === 'limited') return json(429, 'limit');
           if (held.state === 'paused') return json(503, 'cleanup');
           if (held.state !== 'reserved') return json(409, 'pending');
@@ -143,7 +197,7 @@ export function photoHandler(
             p_id: id,
             p_token: held.token,
           });
-          return expiresAt ? receipt(expiresAt, 201) : json(503, 'upload');
+          return expiresAt ? json(201, { expiresAt }) : json(503, 'upload');
         }
         case 'read': {
           const path = await admin.rpc<string | null>('booth_read_path', scope);

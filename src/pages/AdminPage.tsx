@@ -1,5 +1,5 @@
 import { CalendarDays, Camera, ClipboardList, LayoutDashboard } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { Brand } from '../components/Brand';
 import { Button, ButtonLink } from '../components/Button';
@@ -14,30 +14,44 @@ const links = [
   { to: '/equipe/auditoria', label: 'Auditoria', icon: ClipboardList },
 ];
 
-export type AdminSessionContext = { token: string; onExpired: () => void };
+export type AdminSessionContext = {
+  token: string;
+  onExpired: () => void;
+  isSessionActive: () => boolean;
+};
 
 export function AdminPage() {
   const [session, setSession] = useState<OperatorSession | null>(null);
+  const activeSession = useRef<OperatorSession | null>(null);
   const [expired, setExpired] = useState(false);
   const main = useRef<HTMLElement>(null);
-  const endSession = useCallback(() => {
+  const endSession = useCallback((target: OperatorSession, wasExpired: boolean) => {
+    if (activeSession.current !== target) return;
+    activeSession.current = null;
     setSession(null);
-    setExpired(true);
+    setExpired(wasExpired);
   }, []);
+  const expireSession = useCallback(() => {
+    if (session) endSession(session, true);
+  }, [session, endSession]);
+  const isSessionActive = useCallback(
+    () => session !== null && activeSession.current === session && Date.now() < session.expiresAt,
+    [session],
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     main.current?.querySelector('h1')?.focus({ preventScroll: true });
     if (!session) return;
     const check = () => {
-      if (Date.now() >= session.expiresAt) endSession();
+      if (Date.now() >= session.expiresAt) expireSession();
     };
-    const timer = window.setTimeout(endSession, Math.max(0, session.expiresAt - Date.now()));
+    const timer = window.setTimeout(expireSession, Math.max(0, session.expiresAt - Date.now()));
     document.addEventListener('visibilitychange', check);
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [session, endSession]);
+  }, [session, expireSession]);
 
   return (
     <div className="admin-shell">
@@ -48,13 +62,7 @@ export function AdminPage() {
             Voltar ao início
           </ButtonLink>
           {session && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setSession(null);
-                setExpired(false);
-              }}
-            >
+            <Button variant="secondary" onClick={() => endSession(session, false)}>
               Sair da equipe
             </Button>
           )}
@@ -79,7 +87,11 @@ export function AdminPage() {
           {session ? (
             <Outlet
               context={
-                { token: session.token, onExpired: endSession } satisfies AdminSessionContext
+                {
+                  token: session.token,
+                  onExpired: expireSession,
+                  isSessionActive,
+                } satisfies AdminSessionContext
               }
             />
           ) : (
@@ -97,6 +109,7 @@ export function AdminPage() {
                     label="Entrar no painel"
                     failureMessage="A equipe não pôde entrar. Confira as credenciais e tente novamente."
                     onSession={(next) => {
+                      activeSession.current = next;
                       setSession(next);
                       setExpired(false);
                     }}

@@ -5,26 +5,31 @@ import { HashRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 
-const { signInWithPassword } = vi.hoisted(() => ({ signInWithPassword: vi.fn() }));
+const { signInWithPassword, composeStory, downloadJpeg } = vi.hoisted(() => ({
+  signInWithPassword: vi.fn(),
+  composeStory: vi.fn(),
+  downloadJpeg: vi.fn(),
+}));
 vi.mock('../src/services/supabaseAuth', () => ({
   supabaseConfig: { root: 'https://booth.test', publishable: 'public-test-key' },
   createAuthClient: async () => ({ signInWithPassword }),
 }));
+vi.mock('../src/services/storyImage', () => ({ composeStory, downloadJpeg }));
 
-const jpeg = () =>
+const jpeg = (remainingMs = 60_000) =>
   new Response('synthetic jpeg', {
     headers: {
       'Content-Type': 'image/jpeg',
-      'X-Booth-Remaining-Ms': '60000',
-      'X-Booth-Expires': new Date(Date.now() + 60_000).toISOString(),
+      'X-Booth-Remaining-Ms': String(remainingMs),
+      'X-Booth-Expires': new Date(Date.now() + remainingMs).toISOString(),
     },
   });
-const stories = () =>
+const stories = (status = 'pending') =>
   Response.json([
     {
       id: '00000000-0000-4000-8000-000000000001',
       createdAt: '2026-11-22T12:00:00.000Z',
-      status: 'pending',
+      status,
       available: true,
     },
   ]);
@@ -69,6 +74,8 @@ afterEach(async () => {
   container.remove();
   createObjectURL.mockClear();
   revokeObjectURL.mockClear();
+  composeStory.mockReset();
+  downloadJpeg.mockReset();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -194,4 +201,90 @@ it('limpa a prévia e pede autenticação quando o prazo da sessão acaba', asyn
   expect(element('[role="alert"]').textContent).toContain('Sessão indisponível');
   expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:private-preview');
   expect(container.querySelector('.story-queue')).toBeNull();
+});
+
+it('ignora a resposta 401 de uma leitura anterior após logout e novo login', async () => {
+  await render();
+  await login();
+  let finish!: (response: Response) => void;
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await click('.story-queue__heading button');
+  await click('.admin-header button');
+  await login();
+  await click('.story-queue__heading button');
+  await act(async () => finish(new Response(null, { status: 401 })));
+  expect(element('h1').textContent).toBe('Stories oficiais');
+  expect(element('.story-queue img')).toBeTruthy();
+  expect(createObjectURL).toHaveBeenCalledTimes(1);
+  expect(revokeObjectURL).not.toHaveBeenCalled();
+});
+
+it('revoga a prévia vencida e cancela um download que ainda estava sendo composto', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+  await render();
+  fetchMock
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(stories('approved'));
+  await login();
+  fetchMock.mockResolvedValueOnce(jpeg(1000));
+  await click('.story-queue__heading button');
+  const file = new File(['synthetic jpeg'], 'story.jpg', { type: 'image/jpeg' });
+  let composeSignal: AbortSignal | undefined;
+  let finish!: (value: File) => void;
+  composeStory.mockImplementationOnce((_photo: Blob, signal: AbortSignal) => {
+    composeSignal = signal;
+    return new Promise<File>((resolve) => {
+      finish = resolve;
+    });
+  });
+
+  await click('.story-queue__entry .preview-actions button');
+  expect(composeSignal?.aborted).toBe(false);
+  await act(async () => vi.advanceTimersByTimeAsync(1000));
+  expect(composeSignal?.aborted).toBe(true);
+  expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:private-preview');
+  expect(container.querySelector('.story-queue img')).toBeNull();
+  expect(element('[role="alert"]').textContent).toContain('indisponível');
+  await act(async () => finish(file));
+  expect(downloadJpeg).not.toHaveBeenCalled();
+  expect(element('h1').textContent).toBe('Stories oficiais');
+});
+
+it('descarta uma prévia que chega após o prazo da sessão mesmo antes do timer', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+  await render();
+  await login();
+  let finish!: (response: Response) => void;
+  fetchMock.mockImplementationOnce(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await click('.story-queue__heading button');
+  vi.setSystemTime(Date.now() + 60_000);
+  await act(async () => finish(jpeg()));
+  expect(createObjectURL).not.toHaveBeenCalled();
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(element('[role="alert"]').textContent).toContain('Sessão indisponível');
+});
+
+it('revalida a foto ao restaurar a aba mesmo quando o relógio monotônico ficou suspenso', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+  await render();
+  await login();
+  fetchMock.mockResolvedValueOnce(jpeg(1000));
+  await click('.story-queue__heading button');
+  const monotonic = performance.now();
+  vi.setSystemTime(Date.now() + 1000);
+  expect(performance.now()).toBe(monotonic);
+  await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+  expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:private-preview');
+  expect(container.querySelector('.story-queue img')).toBeNull();
+  expect(element('h1').textContent).toBe('Stories oficiais');
 });

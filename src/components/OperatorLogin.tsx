@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { signInOperator, type OperatorSession } from '../services/privatePhotoStorage';
 import { Button } from './Button';
 
@@ -14,7 +14,7 @@ export function OperatorLogin({
   const pending = useRef<AbortController | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  useEffect(() => () => pending.current?.abort(), []);
+  useLayoutEffect(() => () => pending.current?.abort(), []);
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

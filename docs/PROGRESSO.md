@@ -282,3 +282,10 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Validação local** os 173 testes anteriores passaram em 15 arquivos. O Vitest atingiu o tempo limite ao iniciar o worker da suíte nova nessa execução. Os seis testes do painel passaram em execução dedicada. Lint, tipagem, formatação e build Pages com variáveis sintéticas passaram. A base `/foto-autom-tica/` e os modelos e arquivos WASM foram conferidos no artefato.
 - **Validação manual pendente** executar os testes formais em Safari/iPhone e Chrome/Android com uma conta de homologação. Verificar link direto de Stories, navegação, foco, logout com prévia aberta, expiração e retorno à cabine.
 - **Continuidade** alterações de eventos, papéis, métricas e exclusões administrativas pertencem às próximas fases. Aguardar revisão antes da integração.
+
+### Revisão da segurança e estabilidade da Fase 1
+
+- **Correção** a fila cancela requisições e revoga a URL da prévia ao desmontar. O vencimento da foto também cancela operações pendentes, inclusive a preparação do download. A restauração da aba revalida o prazo estimado a partir do tempo restante informado pelo servidor.
+- **Sessão** o painel ignora respostas antigas, inclusive um HTTP 401 que chegue após novo login. O Canvas libera os recursos ao cancelar e a fila descarta resultados tardios. Operações já recebidas pelo servidor e downloads já entregues ao navegador podem prosseguir.
+- **Cobertura** testes de sessão anterior, expiração antes do timer, retorno à aba e cancelamento durante a codificação. Revisão na branch `feature/11-admin-dashboard`, no [PR #26](https://github.com/Samuelnata2109/foto-autom-tica/pull/26). Validação manual em homologação, incluindo Safari/iPhone e Chrome/Android, permanece pendente.
+- **Resultado** os 184 testes Vitest passaram em 16 arquivos em uma única execução, com um worker. O build para GitHub Pages passou com variáveis sintéticas.

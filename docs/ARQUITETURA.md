@@ -15,6 +15,9 @@ previsto. O layout pai mantém a sessão em memória e só monta as seções ap�
 de acesso pela Edge Function. Logout local, expiração ou resposta 401 da fila encerram
 a sessão e desmontam o conteúdo privado. Isso cancela pedidos do navegador e libera as
 URLs temporárias das prévias. Um pedido já recebido pode ser concluído pelo servidor.
+Respostas assíncronas só podem atualizar a fila enquanto pertencem à sessão ativa.
+O prazo da foto é revalidado ao voltar para a aba. Quando a foto vence, a fila também
+cancela a preparação de downloads e descarta resultados tardios do Canvas.
 
 ## Estrutura
 

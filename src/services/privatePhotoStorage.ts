@@ -39,7 +39,7 @@ export async function signInOperator(email: string, password: string, signal: Ab
   return token;
 }
 
-async function callStorage(
+export async function callStorage(
   token: string | null,
   action: string,
   extra: Record<string, string>,
@@ -133,6 +133,10 @@ export async function readSharedPhoto(secret: string, signal: AbortSignal) {
     signal,
     secret,
   );
+  return readPhotoResponse(response, startedAt);
+}
+
+export async function readPhotoResponse(response: Response, startedAt: number) {
   const remainingMs = Number(response.headers.get('X-Booth-Remaining-Ms'));
   const expiresAt = response.headers.get('X-Booth-Expires') ?? '';
   if (

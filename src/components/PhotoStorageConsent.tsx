@@ -15,9 +15,11 @@ import { sharingConfigured } from '../services/photoShareLink';
 export function StorageOperator({
   token,
   onToken,
+  stories = false,
 }: {
   token: string | null;
   onToken: (token: string | null) => void;
+  stories?: boolean;
 }) {
   const pending = useRef<AbortController | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,16 +36,19 @@ export function StorageOperator({
     setError('');
     setBusy(true);
     try {
-      onToken(
-        await signInOperator(
-          String(values.get('email') ?? ''),
-          String(values.get('password') ?? ''),
-          controller.signal,
-        ),
+      const session = await signInOperator(
+        String(values.get('email') ?? ''),
+        String(values.get('password') ?? ''),
+        controller.signal,
       );
+      if (!controller.signal.aborted) onToken(session);
     } catch {
       if (!controller.signal.aborted)
-        setError('A equipe não pôde entrar. A cabine continua disponível localmente.');
+        setError(
+          stories
+            ? 'A equipe não pôde entrar. Confira as credenciais e tente novamente.'
+            : 'A equipe não pôde entrar. A cabine continua disponível localmente.',
+        );
     } finally {
       if (!controller.signal.aborted) {
         pending.current = null;
@@ -52,11 +57,11 @@ export function StorageOperator({
     }
   }
   return (
-    <details className="gesture-diagnostics">
+    <details className="gesture-diagnostics" open={stories || undefined}>
       <summary>Acesso da equipe</summary>
       {token ? (
         <Button variant="secondary" onClick={() => onToken(null)}>
-          Desconectar armazenamento
+          {stories ? 'Sair da fila' : 'Desconectar armazenamento'}
         </Button>
       ) : (
         <form className="camera-controls storage-login" onSubmit={(event) => void login(event)}>
@@ -67,7 +72,7 @@ export function StorageOperator({
             Senha <input name="password" type="password" required autoComplete="current-password" />
           </label>
           <Button type="submit" variant="secondary" disabled={busy}>
-            Habilitar armazenamento
+            {stories ? 'Entrar na fila' : 'Habilitar armazenamento'}
           </Button>
         </form>
       )}

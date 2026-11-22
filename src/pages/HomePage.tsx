@@ -2,6 +2,7 @@ import { Aperture, ArrowRight, Camera, Hand, Image } from 'lucide-react';
 import { Brand } from '../components/Brand';
 import { ButtonLink } from '../components/Button';
 import { FramingGuides } from '../components/CameraViewport';
+import { storageConfigured } from '../services/privatePhotoStorage';
 
 export function HomePage() {
   return (
@@ -30,6 +31,11 @@ export function HomePage() {
               <Image size={17} aria-hidden="true" /> Personalização
             </li>
           </ul>
+          {storageConfigured && (
+            <ButtonLink to="/equipe/stories" variant="quiet">
+              Fila dos Stories oficiais
+            </ButtonLink>
+          )}
         </section>
         <div className="welcome__viewfinder" aria-hidden="true">
           <FramingGuides />

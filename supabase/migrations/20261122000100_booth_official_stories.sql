@@ -87,16 +87,17 @@ $$;
 
 create function public.booth_list_stories(p_offset integer)
 returns jsonb language sql set search_path = '' as $$
-  select coalesce(jsonb_agg(row_data order by created_at desc, id desc), '[]'::jsonb)
+  select coalesce(jsonb_agg(page.row_data order by page.created_at desc, page.id desc), '[]'::jsonb)
   from (
-    select id, created_at, jsonb_build_object(
-      'id', id, 'createdAt', created_at, 'available', available,
-      'status', case when available or status = 'published' then status else 'unavailable' end
+    select entry.id, entry.created_at, jsonb_build_object(
+      'id', entry.id, 'createdAt', entry.created_at, 'available', entry.available,
+      'status', case when entry.available or entry.status = 'published'
+        then entry.status else 'unavailable' end
     ) as row_data
-    from public.booth_story_availability
-    order by created_at desc, id desc
+    from public.booth_story_availability as entry
+    order by entry.created_at desc, entry.id desc
     limit 26 offset greatest(p_offset, 0)
-  ) page;
+  ) as page;
 $$;
 
 create function public.booth_story_photo(p_id uuid, p_download boolean)

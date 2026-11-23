@@ -81,7 +81,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-async function render(path = '/equipe/stories') {
+async function render(path = '/equipe') {
   window.history.replaceState(null, '', '#' + path);
   await act(async () =>
     root.render(
@@ -108,9 +108,9 @@ async function login() {
   await click('button[type="submit"]');
 }
 
-it('protege a rota direta de Stories até o servidor autorizar o operador', async () => {
+it('protege a gestão de Stories até o servidor autorizar o operador', async () => {
   await render();
-  expect(element('h1').textContent).toBe('Painel administrativo');
+  expect(element('h1').textContent).toBe('Acesso da equipe');
   expect(container.querySelector('.admin-nav')).toBeNull();
   expect(fetchMock).not.toHaveBeenCalled();
   fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }));
@@ -121,22 +121,28 @@ it('protege a rota direta de Stories até o servidor autorizar o operador', asyn
   await login();
   expect(element('h1').textContent).toBe('Stories oficiais');
   expect(element('.story-queue').textContent).toContain('Pendente');
+  expect(container.querySelector('.admin-nav')).toBeNull();
+  expect(container.textContent).not.toContain('Eventos e recursos');
+  expect(container.textContent).not.toContain('Auditoria');
 });
 
-it('mantém a sessão ao navegar entre as quatro seções e marca o foco e a rota ativa', async () => {
+it('redireciona a rota antiga de Stories para a gestão protegida', async () => {
+  await render('/equipe/stories');
+  expect(element('h1').textContent).toBe('Acesso da equipe');
+  expect(fetchMock).not.toHaveBeenCalled();
+  await login();
+  expect(window.location.hash).toBe('#/equipe');
+  expect(element('h1').textContent).toBe('Stories oficiais');
+  expect(element('.story-queue').textContent).toContain('Pendente');
+  expect(signInWithPassword).toHaveBeenCalledTimes(1);
+});
+
+it('abre a gestão de Stories diretamente após autenticar sem navegação intermediária', async () => {
   await render('/equipe');
   await login();
-  expect(element('h1').textContent).toBe('Visão geral');
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  await click('a[href="#/equipe/eventos"]');
-  expect(element('h1').textContent).toBe('Eventos e recursos');
-  expect(document.activeElement).toBe(element('h1'));
-  await click('a[href="#/equipe/auditoria"]');
-  expect(element('h1').textContent).toBe('Auditoria');
-  expect(fetchMock).toHaveBeenCalledTimes(1);
-  await click('a[href="#/equipe/stories"]');
-  expect(element('a[aria-current="page"]').textContent).toBe('Stories oficiais');
+  expect(element('h1').textContent).toBe('Stories oficiais');
   expect(element('.story-queue').textContent).toContain('Pendente');
+  expect(fetchMock).toHaveBeenCalledTimes(2);
   expect(signInWithPassword).toHaveBeenCalledTimes(1);
   expect(new Headers(fetchMock.mock.lastCall?.[1]?.headers).get('Authorization')).toBe(
     'Bearer operator-session',
@@ -174,11 +180,14 @@ it('cancela a leitura pendente e descarta a resposta tardia ao sair da rota de S
     });
   });
   await click('.story-queue__heading button');
-  await click('a[href="#/equipe"]');
+  await act(async () => {
+    window.location.hash = '#/';
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
   expect(pendingSignal?.aborted).toBe(true);
   await act(async () => finish(jpeg()));
   expect(createObjectURL).not.toHaveBeenCalled();
-  expect(element('h1').textContent).toBe('Visão geral');
+  expect(element('h1').textContent).toBeTruthy();
 });
 
 it('encerra toda a sessão quando a fila recebe autorização recusada', async () => {

@@ -9,10 +9,10 @@ A Etapa 10 reaproveita a página pública do QR para gerar o JPEG 9:16 no navega
 A fila privada usa a mesma Edge Function de fotos e a autenticação da equipe. A aprovação
 libera o download, e a publicação oficial é feita manualmente. [Fluxo de Stories](INTEGRACAO_INSTAGRAM.md)
 
-Na Fase 1 da Etapa 11, `#/equipe` hospeda as rotas administrativas. A rota
-`#/equipe/stories` renderiza a fila existente, e as demais seções apresentam o escopo
-previsto. O layout pai mantém a sessão em memória e só monta as seções após a confirmação
-de acesso pela Edge Function. Logout local, expiração ou resposta 401 da fila encerram
+Na Etapa 11, `#/equipe` é a página de gestão de Stories oficiais. A rota antiga
+`#/equipe/stories` redireciona para a página principal dentro do layout protegido. O
+layout pai mantém a sessão em memória e só monta a fila após a confirmação de acesso
+pela Edge Function. Logout local, expiração ou resposta 401 da fila encerram
 a sessão e desmontam o conteúdo privado. Isso cancela pedidos do navegador e libera as
 URLs temporárias das prévias. Um pedido já recebido pode ser concluído pelo servidor.
 Respostas assíncronas só podem atualizar a fila enquanto pertencem à sessão ativa.

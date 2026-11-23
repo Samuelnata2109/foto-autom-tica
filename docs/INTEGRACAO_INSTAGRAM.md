@@ -22,7 +22,7 @@ Antes do evento, a organização deve definir o procedimento de autorização e 
 
 ## Fila privada e publicação manual
 
-1. Abra **Painel da equipe** na página inicial, entre com uma conta da equipe já autorizada no Supabase e selecione **Stories oficiais**. O link direto `#/equipe/stories` também abre a fila após o login.
+1. Abra **Painel da equipe** na página inicial e entre com uma conta da equipe já autorizada no Supabase. A gestão de Stories oficiais abre diretamente em `#/equipe`; links antigos `#/equipe/stories` redirecionam para essa página protegida.
 2. Visualize a solicitação pendente com o JPEG original e aprove ou rejeite. A fila é paginada e carrega a imagem somente quando o operador abre uma solicitação.
 3. Na solicitação aprovada, baixe o JPEG 9:16. No aparelho da equipe, selecione manualmente o perfil oficial e publique um Story com esse arquivo.
 4. Na fila, escolha **Marcar como publicada** e confirme **Sim, já foi publicada** após concluir a publicação no Instagram. O servidor exige aprovação prévia. A marcação registra a ação declarada pelo operador.

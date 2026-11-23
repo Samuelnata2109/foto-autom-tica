@@ -70,6 +70,28 @@ it('libera a imagem quando o contexto 2D ou o JPEG falham', async () => {
   expect(encoder.image.close).toHaveBeenCalledOnce();
 });
 
+it('libera bitmap e canvases ao cancelar enquanto o navegador ainda codifica o JPEG', async () => {
+  const { image, input, encode, drawImage } = canvasFixture(640, 480);
+  const controller = new AbortController();
+  let finish!: BlobCallback;
+  encode.mockImplementationOnce((callback) => {
+    finish = callback;
+  });
+
+  const result = composeStory(input, controller.signal);
+  const check = expect(result).rejects.toMatchObject({ name: 'AbortError' });
+  await Promise.resolve();
+  expect(encode).toHaveBeenCalledOnce();
+  const canvas = encode.mock.contexts[0];
+  controller.abort();
+  await check;
+  expect(image.close).toHaveBeenCalledOnce();
+  expect(canvas).toMatchObject({ width: 0, height: 0 });
+  expect(drawImage.mock.calls[1]![0]).toMatchObject({ width: 0, height: 0 });
+  finish(new Blob(['story'], { type: 'image/jpeg' }));
+  expect(image.close).toHaveBeenCalledOnce();
+});
+
 it('entrega somente o arquivo ao compartilhamento nativo', async () => {
   const share = vi.fn().mockResolvedValue(undefined);
   const canShare = vi.fn().mockReturnValue(true);

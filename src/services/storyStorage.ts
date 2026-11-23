@@ -6,6 +6,16 @@ export type StoryEntry = { id: string; createdAt: string; available: boolean; st
 export type StoryDecision = 'approve' | 'reject' | 'publish';
 export const storyPageSize = 25;
 
+export function storyTimeRemaining({
+  deadline,
+  wallDeadline,
+}: {
+  deadline: number;
+  wallDeadline: number;
+}) {
+  return Math.min(deadline - performance.now(), wallDeadline - Date.now());
+}
+
 export async function submitOfficialStory(secret: string, consent: boolean, signal: AbortSignal) {
   if (!consent) throw new PhotoStorageError(400);
   if (!/^[a-f0-9]{64}$/.test(secret)) throw new PhotoStorageError(404);
@@ -50,13 +60,15 @@ export async function readOfficialStory(
   signal: AbortSignal,
 ) {
   const startedAt = performance.now();
+  const wallStartedAt = Date.now();
   const response = await callStorage(
     token,
     'story-read',
     { 'X-Booth-Story': id, 'X-Booth-Purpose': purpose },
     signal,
   );
-  return readPhotoResponse(response, startedAt);
+  const photo = await readPhotoResponse(response, startedAt);
+  return { ...photo, wallDeadline: wallStartedAt + (photo.deadline - startedAt) };
 }
 
 export async function updateOfficialStory(

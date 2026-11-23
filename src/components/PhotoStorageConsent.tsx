@@ -1,86 +1,41 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SessionPhoto } from '../types/photo';
 import {
   createPhotoAccess,
   deleteStoredPhoto,
   PhotoStorageError,
-  signInOperator,
   storeConfirmedPhoto,
   type PhotoAccess,
 } from '../services/privatePhotoStorage';
 import { Button } from './Button';
+import { OperatorLogin } from './OperatorLogin';
 import { PhotoShareControls } from './PhotoShareControls';
 import { sharingConfigured } from '../services/photoShareLink';
 
 export function StorageOperator({
   token,
   onToken,
-  stories = false,
 }: {
   token: string | null;
   onToken: (token: string | null) => void;
-  stories?: boolean;
 }) {
-  const pending = useRef<AbortController | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  useEffect(() => () => pending.current?.abort(), []);
-  async function login(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending.current) return;
-    const form = event.currentTarget;
-    const values = new FormData(form);
-    const controller = new AbortController();
-    pending.current = controller;
-    form.reset();
-    setError('');
-    setBusy(true);
-    try {
-      const session = await signInOperator(
-        String(values.get('email') ?? ''),
-        String(values.get('password') ?? ''),
-        controller.signal,
-      );
-      if (!controller.signal.aborted) onToken(session);
-    } catch {
-      if (!controller.signal.aborted)
-        setError(
-          stories
-            ? 'A equipe não pôde entrar. Confira as credenciais e tente novamente.'
-            : 'A equipe não pôde entrar. A cabine continua disponível localmente.',
-        );
-    } finally {
-      if (!controller.signal.aborted) {
-        pending.current = null;
-        setBusy(false);
-      }
-    }
-  }
   return (
-    <details className="gesture-diagnostics" open={stories || undefined}>
+    <details className="gesture-diagnostics">
       <summary>Acesso da equipe</summary>
       {token ? (
         <Button variant="secondary" onClick={() => onToken(null)}>
-          {stories ? 'Sair da fila' : 'Desconectar armazenamento'}
+          Desconectar armazenamento
         </Button>
       ) : (
-        <form className="camera-controls storage-login" onSubmit={(event) => void login(event)}>
-          <label>
-            E-mail da equipe <input name="email" type="email" required autoComplete="username" />
-          </label>
-          <label>
-            Senha <input name="password" type="password" required autoComplete="current-password" />
-          </label>
-          <Button type="submit" variant="secondary" disabled={busy}>
-            {stories ? 'Entrar na fila' : 'Habilitar armazenamento'}
-          </Button>
-        </form>
+        <OperatorLogin
+          label="Habilitar armazenamento"
+          failureMessage="A equipe não pôde entrar. A cabine continua disponível localmente."
+          onSession={({ token }) => onToken(token)}
+        />
       )}
-      {error && <p role="alert">{error}</p>}
     </details>
   );
 }
-
 type Stage =
   | 'choice'
   | 'declined'

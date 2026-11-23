@@ -56,6 +56,7 @@ function photo() {
   return {
     image,
     deadline: performance.now() + 5000,
+    wallDeadline: Date.now() + 5000,
     expiresAt: new Date(Date.now() + 5000).toISOString(),
   };
 }
@@ -189,7 +190,11 @@ it('registra a publicação manual somente após confirmação do operador', asy
   });
   vi.spyOn(storyStorage, 'readOfficialStory').mockImplementation(async () => photo());
   const update = vi.spyOn(storyStorage, 'updateOfficialStory').mockResolvedValue(undefined);
-  await act(async () => root.render(<OfficialStoryQueue token="operator" onExpired={vi.fn()} />));
+  await act(async () =>
+    root.render(
+      <OfficialStoryQueue token="operator" onExpired={vi.fn()} isSessionActive={() => true} />,
+    ),
+  );
   await act(async () => button('Visualizar foto').click());
   await act(async () => button('Marcar como publicada').click());
   expect(update).not.toHaveBeenCalled();

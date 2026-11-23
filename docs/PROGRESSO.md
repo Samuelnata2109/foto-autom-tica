@@ -272,3 +272,27 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Entrega** migration incremental `20261122000200_booth_expired_photo_backlog.sql` com contagem e idade da foto vencida mais antiga. `booth-cleanup` informa separadamente se o ciclo terminou sem falhas e se a fila de vencidas zerou. A consulta é restrita ao servidor e os logs contêm dados agregados.
 - **Validação local** 173 testes Vitest em 15 arquivos, lint, tipagem, formatação e build passaram. Os quatro scripts SQL passaram em PostgreSQL 17.5 via PGlite. Os lotes de 41, 80 e 100 fotos sintéticas zeraram em dois, dois e três ciclos, com remoção do Storage simulada. O teste confirmou o bloqueio de leitura antes da exclusão física e a execução da métrica sob `service_role`.
 - **Operação e pendências** o [guia de armazenamento privado](ARMAZENAMENTO_PRIVADO.md#inspeção-monitoramento-e-recuperação) descreve o acompanhamento durante o evento e a precedência das credenciais. A nova métrica ainda precisa ser verificada com o Cron e o Storage reais após implantação autorizada. Alterações locais na branch `feature/10-instagram-stories`, para revisão no [PR #25](https://github.com/Samuelnata2109/foto-autom-tica/pull/25). Nenhuma dependência adicionada.
+
+## 22/11/2026 — Etapa 11/12 — Fase 1 do Painel Administrativo
+
+- **Base e status** implementação na branch `feature/11-admin-dashboard`, a partir de `develop` em `082a675`, com a Etapa 10 integrada. Fase 1 em revisão.
+- **Entrega original da Fase 1** entrada `#/equipe`, navegação responsiva e fila privada de Stories em `#/equipe/stories`, além de seções informativas para escopos futuros.
+- **Arquitetura** rotas aninhadas mantêm uma sessão em memória entre seções. O formulário compartilhado confirma o operador na Edge Function antes de mostrar a área protegida. Logout, expiração e autorização recusada desmontam a fila. A fila cancela pedidos pendentes no navegador e libera as URLs temporárias. Nenhuma dependência nova.
+- **Arquivos principais** `src/App.tsx`, `src/pages/AdminPage.tsx`, `src/pages/admin.css`, `src/pages/OfficialStoriesPage.tsx`, `src/pages/HomePage.tsx`, `src/components/OperatorLogin.tsx`, `src/components/PhotoStorageConsent.tsx`, `src/components/OfficialStoryQueue.tsx`, `src/services/privatePhotoStorage.ts` e `tests/AdminPage.test.tsx`.
+- **Validação local** os 173 testes anteriores passaram em 15 arquivos. O Vitest atingiu o tempo limite ao iniciar o worker da suíte nova nessa execução. Os seis testes do painel passaram em execução dedicada. Lint, tipagem, formatação e build Pages com variáveis sintéticas passaram. A base `/foto-autom-tica/` e os modelos e arquivos WASM foram conferidos no artefato.
+- **Validação manual pendente** executar os testes formais em Safari/iPhone e Chrome/Android com uma conta de homologação. Verificar link direto de Stories, navegação, foco, logout com prévia aberta, expiração e retorno à cabine.
+- **Continuidade** alterações de eventos, papéis, métricas e exclusões administrativas pertencem às próximas fases. Aguardar revisão antes da integração.
+
+### Revisão da segurança e estabilidade da Fase 1
+
+- **Correção** a fila cancela requisições e revoga a URL da prévia ao desmontar. O vencimento da foto também cancela operações pendentes, inclusive a preparação do download. A restauração da aba revalida o prazo estimado a partir do tempo restante informado pelo servidor.
+- **Sessão** o painel ignora respostas antigas, inclusive um HTTP 401 que chegue após novo login. O Canvas libera os recursos ao cancelar e a fila descarta resultados tardios. Operações já recebidas pelo servidor e downloads já entregues ao navegador podem prosseguir.
+- **Cobertura** testes de sessão anterior, expiração antes do timer, retorno à aba e cancelamento durante a codificação. Revisão na branch `feature/11-admin-dashboard`, no [PR #26](https://github.com/Samuelnata2109/foto-autom-tica/pull/26). Validação manual em homologação, incluindo Safari/iPhone e Chrome/Android, permanece pendente.
+- **Resultado** os 184 testes Vitest passaram em 16 arquivos em uma única execução, com um worker. O build para GitHub Pages passou com variáveis sintéticas.
+
+### Simplificação do painel de equipe — 23/11/2026
+
+- **Escopo** `#/equipe` abre diretamente a gestão de Stories oficiais. Removidas da interface as seções informativas de visão geral, eventos e auditoria e a navegação entre seções. A rota legada `#/equipe/stories` redireciona para `#/equipe` dentro do guardião de autenticação.
+- **Segurança preservada** autenticação do operador, validação pela Edge Function, sessão em memória, expiração, cancelamento de requisições e revogação de URLs temporárias permanecem no layout administrativo existente.
+- **Arquivos** `src/App.tsx`, `src/pages/AdminPage.tsx`, `src/pages/OfficialStoriesPage.tsx`, `src/pages/admin.css`, `tests/AdminPage.test.tsx`, `docs/ARQUITETURA.md`, `docs/INTEGRACAO_INSTAGRAM.md` e `docs/PROGRESSO.md`.
+- **Validação** pendente de lint, typecheck, testes e build nesta implementação.

@@ -2,11 +2,14 @@ const width = 1080;
 const height = 1920;
 const margin = 48;
 
-export async function composeStory(photo: Blob): Promise<File> {
+export async function composeStory(photo: Blob, signal?: AbortSignal): Promise<File> {
+  signal?.throwIfAborted();
   const canvas = document.createElement('canvas');
   const background = document.createElement('canvas');
   const image = await createImageBitmap(photo);
+  let stopWatchingAbort: (() => void) | undefined;
   try {
+    signal?.throwIfAborted();
     canvas.width = width;
     canvas.height = height;
     background.width = 36;
@@ -48,6 +51,9 @@ export async function composeStory(photo: Blob): Promise<File> {
     );
 
     const jpeg = await new Promise<Blob>((resolve, reject) => {
+      const abortEncoding = () => reject(signal?.reason);
+      signal?.addEventListener('abort', abortEncoding, { once: true });
+      stopWatchingAbort = () => signal?.removeEventListener('abort', abortEncoding);
       canvas.toBlob(
         (blob) => {
           if (blob?.type === 'image/jpeg' && blob.size) resolve(blob);
@@ -57,8 +63,10 @@ export async function composeStory(photo: Blob): Promise<File> {
         0.94,
       );
     });
+    signal?.throwIfAborted();
     return new File([jpeg], 'ai-photo-booth-story.jpg', { type: jpeg.type });
   } finally {
+    stopWatchingAbort?.();
     image.close();
     canvas.width = canvas.height = 0;
     background.width = background.height = 0;

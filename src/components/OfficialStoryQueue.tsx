@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { PhotoStorageError } from '../services/privatePhotoStorage';
 import { composeStory, downloadJpeg } from '../services/storyImage';
 import {
   listOfficialStories,
   readOfficialStory,
   storyPageSize,
+  storyTimeRemaining,
   updateOfficialStory,
   type StoryDecision,
   type StoryEntry,
@@ -22,6 +23,12 @@ const labels: Record<StoryStatus, string> = {
 
 const unavailableMessage = 'A fotografia está indisponível por expiração, revogação ou exclusão.';
 
+type StoryQueueSession = {
+  token: string;
+  onExpired: () => void;
+  isSessionActive: () => boolean;
+};
+
 function errorMessage(failure: unknown) {
   if (failure instanceof PhotoStorageError) {
     if (failure.status === 404) return unavailableMessage;
@@ -35,14 +42,18 @@ function StoryDetails({
   entry,
   token,
   onExpired,
+  isSessionActive,
   onUpdate,
 }: {
   entry: StoryEntry;
-  token: string;
-  onExpired: () => void;
   onUpdate: (decision: StoryDecision) => void;
-}) {
-  const [preview, setPreview] = useState<{ url: string; deadline: number } | null>(null);
+} & StoryQueueSession) {
+  const [preview, setPreview] = useState<{
+    url: string;
+    deadline: number;
+    wallDeadline: number;
+    invalidate: () => void;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -50,77 +61,93 @@ function StoryDetails({
   const [error, setError] = useState('');
   const pending = useRef<AbortController | null>(null);
 
-  useEffect(() => () => pending.current?.abort(), []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const controller = new AbortController();
+    const isCurrent = () => !controller.signal.aborted && isSessionActive();
+    let releasePreview: (() => void) | undefined;
     void readOfficialStory(token, entry.id, 'preview', controller.signal)
-      .then(({ image, deadline }) => {
-        if (controller.signal.aborted) return;
-        if (deadline <= performance.now()) throw new PhotoStorageError(404);
-        setPreview({ url: URL.createObjectURL(image), deadline });
+      .then(({ image, deadline, wallDeadline }) => {
+        if (!isCurrent()) return;
+        const validity = { deadline, wallDeadline };
+        if (storyTimeRemaining(validity) <= 0) throw new PhotoStorageError(404);
+        const url = URL.createObjectURL(image);
+        const invalidate = () => {
+          if (!releasePreview) return;
+          release();
+          pending.current?.abort();
+          pending.current = null;
+          setPreview(null);
+          setBusy(false);
+          setConfirming(false);
+          setError(unavailableMessage);
+        };
+        const check = () => {
+          if (storyTimeRemaining(validity) <= 0) invalidate();
+        };
+        const timer = window.setTimeout(invalidate, Math.max(0, storyTimeRemaining(validity)));
+        const release = () => {
+          URL.revokeObjectURL(url);
+          window.clearTimeout(timer);
+          document.removeEventListener('visibilitychange', check);
+          releasePreview = undefined;
+        };
+        releasePreview = release;
+        document.addEventListener('visibilitychange', check);
+        setPreview({ url, ...validity, invalidate });
       })
       .catch((failure: unknown) => {
-        if (controller.signal.aborted) return;
+        if (!isCurrent()) return;
         if (failure instanceof PhotoStorageError && failure.status === 401) onExpired();
         else setError(errorMessage(failure));
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (isCurrent()) setLoading(false);
       });
-    return () => controller.abort();
-  }, [token, entry.id, onExpired, attempt]);
-
-  useEffect(() => {
-    if (!preview) return;
-    const expire = () => {
-      setPreview(null);
-      setError(unavailableMessage);
-    };
-    const check = () => {
-      if (performance.now() >= preview.deadline) expire();
-    };
-    const timer = window.setTimeout(expire, Math.max(0, preview.deadline - performance.now()));
-    document.addEventListener('visibilitychange', check);
     return () => {
-      URL.revokeObjectURL(preview.url);
-      window.clearTimeout(timer);
-      document.removeEventListener('visibilitychange', check);
+      controller.abort();
+      pending.current?.abort();
+      pending.current = null;
+      releasePreview?.();
     };
-  }, [preview]);
+  }, [token, entry.id, onExpired, isSessionActive, attempt]);
 
   async function perform(action: StoryDecision | 'download') {
-    if (!preview || pending.current) return;
-    if (performance.now() >= preview.deadline) {
-      setPreview(null);
-      setError(unavailableMessage);
+    if (!preview || pending.current || !isSessionActive()) return;
+    if (storyTimeRemaining(preview) <= 0) {
+      preview.invalidate();
       return;
     }
     const controller = new AbortController();
+    const isCurrent = () => pending.current === controller && isSessionActive();
+    const canUsePhoto = () => {
+      if (!isCurrent()) return false;
+      if (storyTimeRemaining(preview) > 0) return true;
+      preview.invalidate();
+      return false;
+    };
     pending.current = controller;
     setBusy(true);
     setError('');
     try {
       if (action === 'download') {
         const photo = await readOfficialStory(token, entry.id, 'download', controller.signal);
-        if (controller.signal.aborted) return;
-        if (performance.now() >= photo.deadline) throw new PhotoStorageError(404);
-        const file = await composeStory(photo.image);
-        if (controller.signal.aborted) return;
-        if (performance.now() >= photo.deadline) throw new PhotoStorageError(404);
+        if (!canUsePhoto()) return;
+        if (storyTimeRemaining(photo) <= 0) throw new PhotoStorageError(404);
+        const file = await composeStory(photo.image, controller.signal);
+        if (!canUsePhoto()) return;
+        if (storyTimeRemaining(photo) <= 0) throw new PhotoStorageError(404);
         downloadJpeg(file, file.name);
       } else {
         await updateOfficialStory(token, entry.id, action, controller.signal);
-        if (!controller.signal.aborted) onUpdate(action);
+        if (canUsePhoto()) onUpdate(action);
       }
     } catch (failure) {
-      if (controller.signal.aborted) return;
+      if (!isCurrent()) return;
       if (failure instanceof PhotoStorageError && failure.status === 401) onExpired();
-      else {
-        if (failure instanceof PhotoStorageError && failure.status === 404) setPreview(null);
-        setError(errorMessage(failure));
-      }
+      else if (failure instanceof PhotoStorageError && failure.status === 404) preview.invalidate();
+      else if (canUsePhoto()) setError(errorMessage(failure));
     } finally {
-      if (!controller.signal.aborted) {
+      if (isCurrent()) {
         pending.current = null;
         setBusy(false);
         setConfirming(false);
@@ -202,7 +229,7 @@ function StoryDetails({
   );
 }
 
-export function OfficialStoryQueue({ token, onExpired }: { token: string; onExpired: () => void }) {
+export function OfficialStoryQueue({ token, onExpired, isSessionActive }: StoryQueueSession) {
   const [page, setPage] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [list, setList] = useState<{ entries: StoryEntry[]; more: boolean } | null>(null);
@@ -210,19 +237,20 @@ export function OfficialStoryQueue({ token, onExpired }: { token: string; onExpi
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const controller = new AbortController();
+    const isCurrent = () => !controller.signal.aborted && isSessionActive();
     void listOfficialStories(token, page * storyPageSize, controller.signal)
       .then((entries) => {
-        if (!controller.signal.aborted) setList(entries);
+        if (isCurrent()) setList(entries);
       })
       .catch((failure: unknown) => {
-        if (controller.signal.aborted) return;
+        if (!isCurrent()) return;
         if (failure instanceof PhotoStorageError && failure.status === 401) onExpired();
         else setError(errorMessage(failure));
       });
     return () => controller.abort();
-  }, [page, attempt, token, onExpired]);
+  }, [page, attempt, token, onExpired, isSessionActive]);
 
   function refresh() {
     setError('');
@@ -270,6 +298,7 @@ export function OfficialStoryQueue({ token, onExpired }: { token: string; onExpi
                     entry={entry}
                     token={token}
                     onExpired={onExpired}
+                    isSessionActive={isSessionActive}
                     onUpdate={(decision) => {
                       setNotice(
                         {

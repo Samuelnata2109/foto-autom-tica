@@ -1,15 +1,15 @@
 # Composição fotográfica — Etapa 06
 
-A cabine usa duas artes oficiais Redes Neurais, incluídas no build pelo Vite. Os PNGs fornecidos foram copiados byte a byte e têm canal alfa.
+A cabine usa os dois PNGs oficiais da Feira das Profissões 2026, com a identificação do Curso Técnico de Inteligência Artificial. Os arquivos fornecidos têm canal alfa na abertura central e foram incluídos sem reexportação.
 
 | Proporção da captura | Arte em `src/assets/frames/`   | Dimensões da arte |
 | -------------------- | ------------------------------ | ----------------- |
 | 16:9                 | `feira-das-profissoes.png`     | 1920 × 1080       |
 | 4:3                  | `feira-das-profissoes-4x3.png` | 640 × 480         |
 
-A escolha usa as dimensões do JPEG original e compara as proporções exatamente. A resolução informada pelo driver, a configuração do celular e o nome da câmera não determinam a escolha. Se o DroidCam entregar 1920 × 1080 ao navegador, a moldura será 16:9. A seleção acontece na composição, após a captura.
+A escolha usa as dimensões reais do vídeo no visor e as do quadro capturado na composição. As duas etapas usam a mesma regra e a mesma URL de moldura. Vídeo e PNG ocupam a mesma área do visor, centralizados com `object-fit: contain`. Quando o visor tem outra proporção, o espaço restante fica fora da fotografia e o quadro permanece inteiro.
 
-O Canvas tem o tamanho exato da fotografia. Ele desenha o quadro inteiro na orientação original e redimensiona somente a arte, proporcionalmente, para sobrepor com alfa `source-over`. Isso preserva a parte superior e inferior da captura 4:3 e permite usar a arte de 640 × 480 em fotos 4:3 maiores. O espelhamento da prévia não afeta o JPEG final, que usa qualidade 0,95.
+O Canvas usa a resolução nativa e desenha o quadro inteiro na orientação escolhida no visor. Somente a imagem da câmera é espelhada quando a opção está ativa. A composição aplica a arte uma vez, com alfa `source-over`, e exporta o JPEG com qualidade 0,95.
 
 Outras proporções, incluindo retrato e medidas apenas próximas de 16:9 ou 4:3, mantêm o JPEG original, com aviso na revisão. A cabine também mantém o original quando falta a arte correspondente, a proporção da arte é incompatível ou a composição falha.
 
@@ -19,7 +19,7 @@ Com cenário virtual, a Etapa 07 segmenta o primeiro plano antes da moldura e ex
 
 Na revisão, as dimensões do JPEG determinam a proporção do painel. O painel respeita a largura disponível e o limite de 65% da altura visível. A imagem ocupa sua largura com altura proporcional, sem margem interna. Antes, o limite de altura do painel não limitava a altura do elemento de imagem. No ensaio em Chrome, uma captura 4:3 ocupou 824 px de altura em um painel com limite próximo de 457 px. Com o ajuste, o painel e a imagem acompanham o mesmo enquadramento.
 
-Na região inspecionada da abertura da arte 4:3 (x de 25 a 614, y de 120 a 420), não foram encontrados pixels quase pretos com alfa acima de 4/255. Os PNGs originais continuam em uso. Com uma fotografia pública e um padrão sintético em 640 × 480 e 1920 × 1080, o Chrome confirmou as dimensões finais e pixels preservados à esquerda, no centro e à direita da abertura. O ensaio não reproduziu as faixas laterais relatadas. Se elas aparecerem dentro do próprio JPEG, compare com o quadro original do DroidCam. A composição conserva qualquer faixa que já faça parte do quadro entregue pelo dispositivo.
+Se aparecerem faixas dentro do próprio JPEG, compare com o quadro original do DroidCam. A composição conserva qualquer faixa que já faça parte do quadro entregue pelo dispositivo.
 
 ## Validação física
 

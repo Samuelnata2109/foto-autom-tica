@@ -296,3 +296,11 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Segurança preservada** autenticação do operador, validação pela Edge Function, sessão em memória, expiração, cancelamento de requisições e revogação de URLs temporárias permanecem no layout administrativo existente.
 - **Arquivos** `src/App.tsx`, `src/pages/AdminPage.tsx`, `src/pages/OfficialStoriesPage.tsx`, `src/pages/admin.css`, `tests/AdminPage.test.tsx`, `docs/ARQUITETURA.md`, `docs/INTEGRACAO_INSTAGRAM.md` e `docs/PROGRESSO.md`.
 - **Validação** pendente de lint, typecheck, testes e build nesta implementação.
+
+### Moldura da Feira das Profissões 2026 no visor — 23/11/2026
+
+- **Escopo** substituição dos PNGs oficiais de 1920 × 1080 e 640 × 480 e prévia no visor antes e durante a contagem. A abertura central tem alfa transparente nos dois arquivos, preservados byte a byte.
+- **Implementação** `CameraViewport`, `BoothPage`, estilos da cabine, serviços de captura e composição e `usePhotoCapture`. Visor e composição selecionam o mesmo PNG pela proporção nativa. O JPEG mantém a orientação espelhada escolhida no visor e recebe a arte uma única vez.
+- **Validação visual** Chrome com vídeo sintético nas duas proporções e larguras de 390 e 1280 px. O retângulo da moldura coincidiu com o do vídeo, e as capturas conferidas preservaram resolução e orientação.
+- **Validação automatizada** lint, typecheck e build do GitHub Pages passaram. O Vitest passou com 189 testes em 16 arquivos. Nenhuma dependência adicionada.
+- **Continuidade** branch `feature/camera-frame-preview`, para revisão em `develop`. Validar com a câmera ou DroidCam do evento e com gestos reais antes da integração.

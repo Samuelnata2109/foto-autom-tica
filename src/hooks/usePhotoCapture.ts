@@ -13,6 +13,7 @@ type CaptureTicket = {
   stream: MediaStream;
   controller: AbortController;
   scenario: Scenario;
+  mirrored: boolean;
   captured?: boolean;
   background?: AbortController;
 };
@@ -25,6 +26,7 @@ export function usePhotoCapture(
   videoRef: RefObject<HTMLVideoElement | null>,
   stream: MediaStream | null,
   ready: boolean,
+  mirrored: boolean,
 ) {
   const { countdown, start: schedule, cancel: cancelCountdown } = useCountdown();
   const [state, setState] = useState<PhotoState>({ phase: 'idle' });
@@ -83,7 +85,7 @@ export function usePhotoCapture(
       return;
     }
 
-    const ticket = { stream, controller: new AbortController(), scenario };
+    const ticket: CaptureTicket = { stream, controller: new AbortController(), scenario, mirrored };
     operation.current = ticket;
     setState({ phase: 'countdown' });
     schedule(duration, () => void capture(ticket));
@@ -100,7 +102,7 @@ export function usePhotoCapture(
       return;
     }
 
-    const ticket: CaptureTicket = { stream, controller: new AbortController(), scenario };
+    const ticket: CaptureTicket = { stream, controller: new AbortController(), scenario, mirrored };
     operation.current = ticket;
     void capture(ticket);
   }
@@ -109,7 +111,7 @@ export function usePhotoCapture(
     if (operation.current !== ticket) return;
 
     try {
-      const result = captureFrame(videoRef.current, ticket.stream);
+      const result = captureFrame(videoRef.current, ticket.stream, ticket.mirrored);
       setState({ phase: 'capturing' });
       const original = await result;
       if (operation.current !== ticket) return;

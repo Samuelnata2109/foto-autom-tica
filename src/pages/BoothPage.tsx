@@ -16,6 +16,7 @@ import { useCamera } from '../hooks/useCamera';
 import { useGestureRecognition } from '../hooks/useGestureRecognition';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { cameraMessages } from '../services/camera';
+import { selectOfficialFrame } from '../services/photoComposition';
 import type { TimerDuration } from '../types/photo';
 import { scenarios, type Scenario } from '../services/virtualBackground';
 import { storageConfigured } from '../services/privatePhotoStorage';
@@ -33,7 +34,7 @@ export function BoothPage() {
   const [scenario, setScenario] = useState<Scenario>('original');
   const [operatorToken, setOperatorToken] = useState<string | null>(null);
   const ready = status === 'active' && Boolean(camera.settings.width && camera.settings.height);
-  const capture = usePhotoCapture(camera.videoRef, camera.stream, ready);
+  const capture = usePhotoCapture(camera.videoRef, camera.stream, ready, camera.mirrored);
   const { state, countdown, error } = capture;
   const recognition = useGestureRecognition(
     camera.videoRef,
@@ -90,6 +91,11 @@ export function BoothPage() {
           <div className="booth-grid" data-reviewing={reviewing}>
             <div className="booth-stage booth-stage--camera">
               <CameraViewport
+                frameUrl={
+                  ready
+                    ? selectOfficialFrame(camera.settings.width ?? 0, camera.settings.height ?? 0)
+                    : undefined
+                }
                 video={
                   camera.stream && (
                     <>

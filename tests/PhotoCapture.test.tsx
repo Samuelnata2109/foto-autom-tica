@@ -14,6 +14,7 @@ const jpeg = new Blob(['jpeg'], { type: 'image/jpeg' });
 const createUrl = vi.fn(() => 'blob:foto-da-cabine');
 const revokeUrl = vi.fn();
 const drawImage = vi.fn();
+const setTransform = vi.fn();
 const encode = vi.fn<(callback: BlobCallback, type?: string, quality?: number) => void>();
 let root: Root;
 let host: HTMLDivElement;
@@ -47,6 +48,7 @@ beforeEach(() => {
   vi.stubGlobal('navigator', { mediaDevices: api });
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
     drawImage,
+    setTransform,
   } as unknown as CanvasRenderingContext2D);
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(encode);
   encode.mockImplementation((callback) => callback(jpeg));
@@ -101,6 +103,51 @@ async function advance(milliseconds: number) {
 }
 
 describe('Sistema fotográfico', () => {
+  it.each([
+    [1280, 720, 'feira-das-profissoes.png'],
+    [640, 480, 'feira-das-profissoes-4x3.png'],
+  ])('mantém a moldura do visor %i × %i durante a contagem', async (width, height, file) => {
+    const video = await open({ width, height });
+    const frame = get<HTMLImageElement>('.camera-viewport__frame');
+    expect(frame.getAttribute('src')).toMatch(new RegExp('/' + file + '$'));
+    expect(frame.parentElement).toBe(video.parentElement);
+    await press('.shutter');
+    expect(get('.camera-viewport__frame')).toBe(frame);
+    expect(get('.countdown')).toBeTruthy();
+    expect(drawImage).not.toHaveBeenCalled();
+    await advance(5000);
+    expect(drawImage).toHaveBeenCalledExactlyOnceWith(video, 0, 0, width, height);
+    expect(setTransform).toHaveBeenCalledExactlyOnceWith(-1, 0, 0, 1, width, 0);
+    expect(composition.composePhoto).toHaveBeenCalledOnce();
+  });
+
+  it('troca a moldura quando o vídeo muda de proporção, sem trocar o vídeo', async () => {
+    const video = await open();
+    Object.defineProperties(video, {
+      videoWidth: { value: 640 },
+      videoHeight: { value: 480 },
+    });
+    await act(async () => video.dispatchEvent(new Event('resize')));
+    expect(get('video')).toBe(video);
+    expect(get<HTMLImageElement>('.camera-viewport__frame').getAttribute('src')).toContain(
+      'feira-das-profissoes-4x3.png',
+    );
+
+    Object.defineProperty(video, 'videoWidth', { value: 854 });
+    await act(async () => video.dispatchEvent(new Event('resize')));
+    expect(host.querySelector('.camera-viewport__frame')).toBeNull();
+  });
+
+  it('salva o quadro com a mesma orientação quando o espelho está desligado', async () => {
+    const video = await open();
+    await press('.camera-controls__mirror input');
+    expect(video.dataset.mirrored).toBe('false');
+    await press('.shutter');
+    await advance(5000);
+    expect(setTransform).not.toHaveBeenCalled();
+    expect(drawImage).toHaveBeenCalledExactlyOnceWith(video, 0, 0, 1280, 720);
+  });
+
   it.each([
     ['start5', 5_000],
     ['start10', 10_000],

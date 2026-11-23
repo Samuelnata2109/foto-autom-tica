@@ -22,6 +22,7 @@ export function checkPhotoSource(
 export async function captureFrame(
   video: HTMLVideoElement | null,
   stream: MediaStream | null,
+  mirrored = false,
 ): Promise<CapturedPhoto> {
   checkPhotoSource(video, stream);
   const { videoWidth: width, videoHeight: height } = video;
@@ -32,6 +33,7 @@ export async function captureFrame(
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Não foi possível iniciar o Canvas. Tente novamente.');
     try {
+      if (mirrored) context.setTransform(-1, 0, 0, 1, width, 0);
       context.drawImage(video, 0, 0, width, height);
     } catch (cause) {
       throw new Error('Não foi possível ler o quadro da câmera. Tente novamente.', { cause });

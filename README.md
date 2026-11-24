@@ -10,7 +10,10 @@ O celular pode se conectar ao cliente DroidCam no Windows por USB ou Wi-Fi.
 
 Use Node.js 24.15 ou superior na série 24 LTS (recomendado), 22.22.2 ou superior na
 série 22, ou Node.js 26, com npm.
-A integração usa a câmera do navegador ao entrar na cabine. O modo local funciona sem configuração do Supabase.
+A integração usa a câmera do navegador ao entrar na cabine. Antes de iniciar o Vite, configure
+a origem e a chave publicável de homologação ou do Supabase local em
+`.env.development.local`. O modo padrão bloqueia o projeto de produção. Consulte o
+[isolamento dos ambientes](docs/ETAPA_12_PLANEJAMENTO.md#isolamento-dos-ambientes).
 
 ```sh
 npm ci
@@ -26,8 +29,9 @@ ser cancelada. Na revisão, **Tirar novamente** descarta a foto e volta à trans
 **Confirmar foto** mantém o JPEG em memória até você sair da cabine ou tirar outra foto.
 O espelhamento escolhido no visor também se aplica à fotografia. A moldura oficial mantém a orientação da arte.
 
-Para habilitar o armazenamento temporário da Etapa 08, configure as variáveis públicas do
-Supabase em `.env.local`, prepare as migrations e o Cron e entre em **Acesso da equipe**.
+Para armazenamento temporário, prepare o banco e o Cron apenas no ambiente de teste
+aprovado e entre em **Acesso da equipe**. A captura local continua disponível se o serviço
+de armazenamento estiver fora do ar.
 O participante decide se deseja armazenar a foto por até 24 horas depois de confirmá-la.
 Consulte o [guia de configuração e validação](docs/ARMAZENAMENTO_PRIVADO.md).
 
@@ -47,7 +51,9 @@ npm run build
 npm run format:check
 ```
 
-O build é gerado em `dist/`. Use `npm run preview` para inspecioná-lo localmente.
+O build padrão usa a configuração de teste do modo `production`, por exemplo
+`.env.production.local`. O build é gerado em `dist/`. Use `npm run preview` com a mesma
+configuração para inspecioná-lo localmente.
 Para aplicar a formatação, execute `npm run format`.
 
 ## Documentação

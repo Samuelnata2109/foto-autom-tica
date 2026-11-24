@@ -1,20 +1,13 @@
-const publishable = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+import { browserSupabaseConfig } from '../config/supabaseEnvironment';
 
-function serviceOrigin(value: string | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' ||
-      (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
-      ? url.origin
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-const root = serviceOrigin(import.meta.env.VITE_SUPABASE_URL);
-export const supabaseConfig = root && publishable ? { root, publishable } : null;
+export const supabaseConfig = browserSupabaseConfig(
+  import.meta.env.MODE,
+  {
+    VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+    VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  },
+  globalThis.location?.origin,
+);
 
 export async function createAuthClient(signal?: AbortSignal) {
   if (!supabaseConfig) throw new Error('Supabase indisponível.');

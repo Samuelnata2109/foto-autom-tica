@@ -332,3 +332,10 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Verificações** inventário do código, testes e configuração, revisão do diff e auditoria npm sem avisos reportados. Os 191 testes em 16 arquivos são evidência do PR #27 e não foram reexecutados nesta entrega documental.
 - **Documentos** [planejamento e diagnóstico](ETAPA_12_PLANEJAMENTO.md), [matriz](MATRIZ_DE_TESTES.md), [critérios de aceitação](CRITERIOS_DE_ACEITACAO.md), [checklist operacional](CHECKLIST_OPERACIONAL.md) e [roadmap](ROADMAP.md).
 - **Próxima ação proposta** confirmar o isolamento antes de ensaios com escrita e registrar a configuração de referência. As correções, os testes físicos e a homologação final aguardam autorização.
+
+### 12.1 — Isolamento dos ambientes
+
+- **Causa** `.env.local` fornecia o destino de produção ao modo padrão, e o cliente aceitava a origem mesmo quando a URL vinha com caminho. O QR ausente não impedia Auth nem armazenamento.
+- **Proteção** `vite.config.ts` valida a origem e a chave publicável por modo, e `supabaseAuth.ts` só cria o cliente quando a política compartilhada permite. O build do Pages exige o projeto de produção e a URL oficial do QR. Uma prévia local desse build não habilita o backend de produção. Nenhuma dependência adicionada.
+- **Validação** lint, typecheck, 205 testes em 17 arquivos, build padrão com variáveis de homologação, build do Pages com variáveis públicas do workflow e `git diff --check` passaram. O carregamento real da configuração do Vite rejeitou o destino padrão atual e aceitou homologação. Nenhum upload foi executado.
+- **Pendências** configurar o modo padrão com valores de teste antes de iniciar a cabine, confirmar o fluxo com dados sintéticos e revisar o hostname do túnel e a base de QR duplicada em homologação. O trecho local de `allowedHosts` foi preservado. A subetapa 12.1 segue em andamento.

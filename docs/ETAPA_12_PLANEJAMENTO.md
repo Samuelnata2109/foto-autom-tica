@@ -25,13 +25,29 @@ P0 bloqueia liberação por risco de segurança, integridade ou indisponibilidad
 
 | ID | Gravidade / prioridade | Evidência e consequência | Próximo passo proposto |
 | --- | --- | --- | --- |
-| D01 | Alta / P1 antes de testes com escrita | `loadEnv('development')` no workspace resolve para o projeto Supabase de produção e não tem base de QR. O cliente normaliza a URL pela origem. Uma cabine local com operador autorizado pode escrever em produção mesmo sem QR disponível. | Conferir destino antes de abrir a cabine para testes. Aprovar separação explícita de variáveis e uma barreira contra escrita de teste em produção. |
+| D01 | Alta / P1 antes de testes com escrita | `loadEnv('development')` no workspace resolve para o projeto Supabase de produção. Antes da proteção, o cliente normalizava a URL pela origem e permitia operar nesse projeto mesmo sem QR disponível. | O Vite agora bloqueia essa configuração. Preparar a configuração de teste e conferir o destino antes de qualquer operação com escrita. |
 | D02 | Média / P1 para homologação externa | O modo `homologacao` resolve outro projeto, mas o QR usa Quick Tunnel e a alteração local de `vite.config.ts` tem aspas literais no valor de `allowedHosts`. Um hostname recebido sem essas aspas não corresponde à entrada. A disponibilidade do túnel não foi testada nesta auditoria. | Validar host, HTTPS, CORS e projeto antes da rodada externa. Tratar a configuração local em tarefa separada após autorização. |
 | D03 | Alta se a limpeza falhar / P1 | As migrations e testes definem retenção e reconciliação. Falta evidência operacional desta etapa do Cron, do backlog e da remoção física com armazenamento real. O fluxo principal validado não prova descarte. | Ensaiar com objeto sintético em ambiente descartável e observar o ambiente autorizado segundo o roteiro de retenção. |
 | D04 | Média / P1 | Matriz física, medições no equipamento do evento, uso prolongado e contingência não têm evidência consolidada. Os 191 testes de referência e a validação manual anterior cobrem outra parte do risco. | Executar a matriz e estabelecer a linha de base antes de alterar desempenho. |
 | D05 | Média / P2 | O workflow de deploy confere build e artefato, mas não roda lint, typecheck ou Vitest. Arquitetura e requisitos ainda misturam intenções do editor e do painel com o comportamento entregue, inclusive anotação antiga sobre espelhamento. | Propor checagens no PR e reconciliar documentos com a implementação em revisão separada. |
 
 Produção usa a base pública do Pages, o projeto de produção e chave publicável no build do Actions. O túnel é uma dependência da homologação externa configurada neste workspace. O modo `github-pages` executado localmente sem as variáveis do workflow não equivale ao build publicado. Para qualquer caso com escrita, confirme previamente o ambiente de teste e evite registrar chaves, senhas, links completos, tokens ou imagens de visitantes.
+
+## Isolamento dos ambientes
+
+O Vite carrega, em ordem de precedência crescente, `.env`, `.env.local`, `.env.<modo>`, `.env.<modo>.local` e as variáveis já definidas no processo. `.env.example` serve como modelo. No workspace auditado, `.env.local` fornecia o projeto de produção com um caminho na URL. O cliente antigo descartava o caminho ao extrair a origem. O modo padrão conseguia, portanto, acessar Auth e a Edge Function de produção mesmo sem QR configurado. `.env.homologacao.local` sobrepõe esse destino no modo correto e tem duas entradas da base de QR. Mantenha uma única entrada válida ao revisar o túnel.
+
+| Modo | Origem do Supabase aceita | Uso |
+| --- | --- | --- |
+| `development` | `https://sdcthjviahstkqlhrtrh.supabase.co` ou HTTP em loopback na porta 54321 | `npm run dev` com valores públicos de teste em `.env.development.local`. |
+| `homologacao` | Apenas `https://sdcthjviahstkqlhrtrh.supabase.co` | `npm run dev -- --mode homologacao`. Para QR em outro dispositivo, configure uma URL HTTPS pública do mesmo ambiente. |
+| `production` do Vite | As mesmas origens de `development` | Build padrão para inspeção local ou teste. Para sobrescrever o arquivo comum, use o processo ou `.env.production.local`. |
+| `github-pages` | Apenas `https://zzckkrherwyspqtkhokm.supabase.co` | Build do Actions com a base oficial do QR. O cliente de produção funciona na origem pública do Pages. |
+| `test` | Cliente real desativado | Vitest usa os mocks e fixtures de cada suíte. |
+
+O Vite recusa variáveis obrigatórias ausentes, uma URL com caminho ou parâmetros, destinos fora da lista e chaves com formato privilegiado. A URL oficial do Pages é obrigatória no build de publicação. Em modos de teste, uma URL de QR ausente mantém o compartilhamento indisponível. O cliente no navegador também aplica a lista de destinos e deixa o Supabase de produção indisponível numa prévia local. A validação de formato não prova a titularidade de chaves publicáveis opacas. Use a chave do projeto correspondente.
+
+As URLs de Auth e `functions/v1/booth-photos` continuam derivadas da origem validada. As Edge Functions continuam usando `SUPABASE_URL` e credenciais do próprio ambiente hospedado. Nenhum arquivo local com credenciais, workflow, secret do Supabase ou configuração de `server.allowedHosts` foi alterado.
 
 ## Plano das oito subetapas
 
@@ -78,4 +94,4 @@ Produção usa a base pública do Pages, o projeto de produção e chave public�
 
 ## Primeira tarefa após autorização
 
-Confirmar a separação efetiva de ambientes antes de qualquer teste com upload. Registrar, sem valores sensíveis, destino do Supabase, origem do frontend, tipo de chave e validade da base do QR por modo. Confirmar uma conta e uma foto sintéticas em ambiente isolado, registrar resultados esperados e revisar a proteção proposta para impedir que `development` aponte acidentalmente para produção.
+Com a proteção implementada, preparar `.env.development.local` em ambiente aprovado e confirmar o destino efetivo antes de qualquer upload. Registrar origem, projeto e presença da chave sem copiar valores sensíveis. Depois, confirmar uma conta e uma foto sintéticas em ambiente isolado. As verificações operacionais restantes da 12.1 continuam pendentes.

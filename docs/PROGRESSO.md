@@ -339,3 +339,24 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Proteção** `vite.config.ts` valida a origem e a chave publicável por modo, e `supabaseAuth.ts` só cria o cliente quando a política compartilhada permite. O build do Pages exige o projeto de produção e a URL oficial do QR. Uma prévia local desse build não habilita o backend de produção. Nenhuma dependência adicionada.
 - **Validação** lint, typecheck, 205 testes em 17 arquivos, build padrão com variáveis de homologação, build do Pages com variáveis públicas do workflow e `git diff --check` passaram. O carregamento real da configuração do Vite rejeitou o destino padrão atual e aceitou homologação. Nenhum upload foi executado.
 - **Pendências** configurar o modo padrão com valores de teste antes de iniciar a cabine, confirmar o fluxo com dados sintéticos e revisar o hostname do túnel e a base de QR duplicada em homologação. O trecho local de `allowedHosts` foi preservado. A subetapa 12.1 segue em andamento.
+
+### 23/11/2026 — Simplificação da Etapa 12
+
+- **Plano vigente** três subetapas na branch `feature/12-testing-optimization-deployment`. A 12.1 finaliza segurança e ajustes locais. A 12.2 simula de 30 a 60 minutos de atendimento no equipamento da feira. A 12.3 concentra testes finais, PR para `develop` e conferência de produção após merge e deploy autorizados.
+- **Evidências reaproveitadas** diagnóstico de `acc2feb`, isolamento de `bd2c8bb` com 205 testes em 17 arquivos, verificações de RLS, privilégios, autenticação e bucket privado, e validação do PR #27 em produção para moldura, armazenamento, QR, download e Stories. Esta revisão documental não reexecutou a suíte.
+- **Documentos atualizados** [planejamento](ETAPA_12_PLANEJAMENTO.md), [matriz](MATRIZ_DE_TESTES.md), [critérios](CRITERIOS_DE_ACEITACAO.md), [checklist](CHECKLIST_OPERACIONAL.md), [roadmap](ROADMAP.md) e este registro.
+- **Status e próxima ação** 12.1 em andamento, 12.2 e 12.3 pendentes. Após autorização, conferir a configuração local e resolver, se necessário, a duplicidade da URL do QR e o host antes de testar armazenamento sintético em homologação. A execução do Cron e a remoção física continuam pendentes de evidência.
+
+#### 23/11/2026 — Ajustes locais de segurança e prontidão de homologação
+
+- **Configuração local** `.env.local` e `.env.homologacao.local` apontam para o projeto de homologação. A entrada vazia duplicada da URL do QR foi removida. A URL efetiva do túnel ficou no arquivo ignorado pelo Git. A regra local com aspas literais foi removida de `vite.config.ts`. Quando o túnel voltar a ser necessário, use `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` no processo do Vite com o hostname exato, sem fixá-lo no código.
+- **Verificação** o Vite aceitou o projeto de teste nos dois modos e bloqueou uma sobrescrita para produção. No teste local de hosts, localhost e o host exato configurado retornaram HTTP 200 e o host arbitrário, 403. Em homologação, o endpoint de configuração do Auth retornou 200 e o preflight de `booth-photos` para `http://localhost:5173` retornou 204 com os cabeçalhos de upload previstos.
+- **Pendências** entrar na cabine com operador de homologação, armazenar uma foto sintética e verificar a execução do Cron e a remoção física do objeto após a expiração, seguindo o [guia de armazenamento privado](ARMAZENAMENTO_PRIVADO.md#inspeção-monitoramento-e-recuperação). A 12.1 segue em andamento.
+
+#### 24/11/2026 — Preparação antecipada da entrega final
+
+- **Escopo** preparação do PR em rascunho para `develop` na branch `feature/12-testing-optimization-deployment`. A preparação pode avançar enquanto o computador definitivo da feira estiver indisponível.
+- **Validação do candidato** lint, typecheck, 205 testes em 17 arquivos, build do GitHub Pages com as variáveis públicas do workflow e `git diff --check` aprovados.
+- **12.1** pendente a confirmação de que a limpeza agendada removeu fisicamente a fotografia expirada em homologação.
+- **12.2B** pendente o ensaio de 30 a 60 minutos no computador definitivo da feira, conforme a [matriz de testes](MATRIZ_DE_TESTES.md).
+- **12.3** pendentes a aprovação, o merge, o deploy e a conferência final em produção.

@@ -1,40 +1,38 @@
 # Checklist operacional — Feira das Profissões 2026
 
-Preencher no ensaio e no dia do evento. Registrar data, local, commit, navegador, câmera e responsável. Utilizar uma foto sintética e a conta aprovada para verificações. Evitar evidências com fotografias de visitantes, senhas, JWTs ou QR completos.
+Use no ensaio e no dia do evento. Registre data, versão, navegador, câmera, responsável e ocorrências. Use fotos sintéticas nas verificações e preserve a privacidade dos registros.
 
 ## Antes de abrir a cabine
 
-- [ ] Confirmar o ambiente, a versão publicada e o projeto Supabase esperado. Separar ensaio de produção para impedir armazenamento de teste no projeto errado.
-- [ ] Ligar e posicionar computador, monitor, câmera e alimentação. Conferir enquadramento, iluminação, fundo e área de circulação. Manter webcam suplente acessível.
-- [ ] Configurar fonte no navegador e verificar resolução efetiva. Se usar DroidCam, testar alimentação, conexão e vídeo no cliente antes de selecionar a webcam virtual. [Guia da câmera](CONFIGURACAO_CAMERA.md)
-- [ ] Abrir perfil de navegador aprovado, conferir permissão de câmera, tela cheia, zoom e conexão. Confirmar feedback e controles manuais antes de ativar gestos.
-- [ ] Autenticar a equipe no ambiente correto e conferir acesso à fila. Confirmar responsáveis por avisos de privacidade, consentimento, tratamento de menores e escalonamento.
-- [ ] Fazer a captura de verificação no ambiente autorizado. Conferir moldura no visor e JPEG, consentimentos, leitura do QR em um segundo dispositivo e download. Conferir fila de Stories conforme autorização de teste. [Guia de QR](COMPARTILHAMENTO_QR.md)
-- [ ] Confirmar estado da limpeza ou solicitar a verificação agregada ao responsável técnico. Definir horário e canal para rechecagem. [Armazenamento privado](ARMAZENAMENTO_PRIVADO.md)
+- [ ] Confirmar a versão e o projeto Supabase esperado. Fazer o ensaio em ambiente autorizado.
+- [ ] Ligar computador, monitor e câmera. Ajustar enquadramento, iluminação e tela cheia. Conferir permissão de câmera e conexão. Se usar DroidCam, confirmar vídeo no cliente e no navegador. [Guia da câmera](CONFIGURACAO_CAMERA.md)
+- [ ] Confirmar que a equipe autorizada consegue acessar a fila de Stories e sabe como obter consentimento e acionar suporte.
+- [ ] Conferir captura, moldura e QR em um segundo dispositivo quando o teste estiver autorizado. Antes da liberação, consultar a evidência da limpeza automática registrada na 12.1. [Guia de QR](COMPARTILHAMENTO_QR.md) · [Armazenamento privado](ARMAZENAMENTO_PRIVADO.md)
+
+## Ensaio de 30 a 60 minutos
+
+- [ ] Simular atendimentos consecutivos no equipamento da feira com captura manual, gestos, temporizador, molduras e cenários virtuais.
+- [ ] Conferir armazenamento, QR e Stories em uma passagem. Registrar travamentos, lentidão, perda de câmera ou gestos indevidos e retestar os fluxos afetados por correções.
 
 ## Durante o atendimento
 
-- [ ] Explicar o processo, obter as autorizações correspondentes e conferir a foto com o participante antes de armazenar ou compartilhar.
-- [ ] Iniciar nova sessão a cada visitante. Não reutilizar QR, prévia ou consentimento de outra pessoa. Usar a alternativa manual quando os gestos estiverem instáveis.
-- [ ] Monitorar imagem, responsividade e conexão. Registrar horário, tipo de falha, ação tomada e resultado sem dados pessoais.
-- [ ] Em Stories, conferir solicitação e consentimento, usar a fila protegida e registrar publicação somente após a ação manual prevista. [Guia de Stories](INTEGRACAO_INSTAGRAM.md)
+- [ ] Explicar o fluxo e obter os consentimentos correspondentes antes de armazenar ou compartilhar. Reiniciar a sessão a cada visitante.
+- [ ] Usar a fila protegida e marcar publicação somente após a ação manual. [Guia de Stories](INTEGRACAO_INSTAGRAM.md)
 
-| Falha | Contingência e critério de retorno |
+| Falha | Contingência |
 | --- | --- |
-| Webcam ou DroidCam sem vídeo | Pausar capturas. Conferir cabo, cliente e permissão, selecionar novamente ou conectar a câmera suplente. Retomar após testar prévia e um disparo sintético. |
-| Gestos ou modelos sem resposta | Usar disparo e confirmação manuais. Usar fundo original se a segmentação falhar. Reativar a IA somente após verificar o reconhecimento. |
-| Internet ou Supabase indisponível | Se a página e a câmera ainda estiverem carregadas, manter apenas captura e revisão locais disponíveis. Informar a indisponibilidade de armazenamento, QR e Stories. Não prometer envio posterior. Retomar após conferir rede, destino, estado da operação anterior e um teste autorizado. |
-| Sessão expirada ou aba recarregada | Encerrar a sessão anterior, entrar novamente e conferir a fila antes de repetir operações. Se a foto local se perdeu na recarga, solicitar nova captura com autorização. |
-| Falha de autorização, exposição ou retenção | Pausar o fluxo afetado e acionar suporte. Registrar evidência redigida e evitar tentativas que alterem segredos, políticas ou registros. |
+| Câmera ou DroidCam sem vídeo | Pausar a captura, conferir conexão e permissão, selecionar novamente ou usar câmera suplente. Testar a prévia e um disparo sintético antes de retomar. |
+| Gestos ou cenários indisponíveis | Usar disparo manual e fundo original, conforme o recurso afetado. |
+| Internet ou Supabase indisponível | Manter captura e revisão locais se ainda estiverem disponíveis. Informar a indisponibilidade dos serviços externos. Conferir a última operação antes de tentar novamente. |
+| Sessão expirada ou aba recarregada | Entrar novamente e conferir a fila antes de repetir ações. Se a foto local tiver sido perdida, pedir autorização para uma nova captura. |
+| Falha de privacidade, autorização ou retenção | Pausar o fluxo afetado e acionar o responsável técnico. |
 
 ## Encerramento
 
-- [ ] Encerrar a sessão do visitante e sair da conta da equipe. Fechar a cabine, confirmar que a câmera parou e desligar os equipamentos conforme orientação local.
-- [ ] Destinar JPEGs baixados segundo a política do evento. Conferir o responsável pela fila e pela verificação de descarte e backlog.
-- [ ] Registrar ocorrências, pendências, horário de parada e responsável pela próxima ação.
+- [ ] Encerrar a sessão do visitante, sair da conta da equipe e conferir se a câmera foi liberada.
+- [ ] Tratar JPEGs baixados conforme a política do evento e registrar ocorrências e responsáveis pelas pendências.
 
 ## Publicação e reversão
 
-- [ ] Antes de uma publicação autorizada, guardar SHA e execução conhecida como estável e conferir a matriz e os critérios de liberação. [Publicação no GitHub Pages](GITHUB_PAGES.md)
-- [ ] Após o workflow, confirmar SHA, jobs, ambiente, assets e os fluxos principais publicados. Registrar a decisão de seguir ou reverter.
-- [ ] Se necessário, pausar a operação afetada e propor um PR de reversão para `develop` a partir da versão estável, com revisão e novo workflow autorizado. Conferir compatibilidade com o backend antes de reverter frontend. Tratar eventual reversão no banco em procedimento e autorização separados.
+- [ ] Antes de uma publicação autorizada, registrar o SHA estável e conferir os [critérios de aceitação](CRITERIOS_DE_ACEITACAO.md).
+- [ ] Após o workflow, conferir SHA, resultado, assets e os fluxos essenciais publicados. Se houver regressão relevante, pausar o fluxo afetado e propor reversão por PR para `develop`, verificando compatibilidade com o backend. [Guia de publicação](GITHUB_PAGES.md)

@@ -7,7 +7,7 @@ import {
   shareStoredPhoto,
   type PhotoAccess,
 } from '../services/privatePhotoStorage';
-import { photoShareLink } from '../services/photoShareLink';
+import { isPhotoSharingConfigured, photoShareLink } from '../services/photoShareLink';
 
 export function PhotoShareControls({
   token,
@@ -26,6 +26,7 @@ export function PhotoShareControls({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [manualCopy, setManualCopy] = useState(false);
+  const configured = isPhotoSharingConfigured();
 
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => {
@@ -42,7 +43,7 @@ export function PhotoShareControls({
   }, [share]);
 
   async function update(action: 'create' | 'revoke') {
-    if (!token || pending.current) return;
+    if (!token || pending.current || (action === 'create' && !configured)) return;
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
@@ -132,11 +133,21 @@ export function PhotoShareControls({
         </>
       ) : (
         <>
-          <p>
-            Você pode autorizar um link temporário. Qualquer pessoa com o link poderá baixar a foto
-            até o prazo original ou a revogação.
-          </p>
-          <Button disabled={busy || !token} onClick={() => void update('create')}>
+          {configured ? (
+            <p>
+              Você pode autorizar um link temporário. Qualquer pessoa com o link poderá baixar a foto
+              até o prazo original ou a revogação.
+            </p>
+          ) : (
+            <p id="photo-share-unavailable" role="status">
+              QR Code indisponível: falta configurar um endereço público para esta cabine.
+            </p>
+          )}
+          <Button
+            aria-describedby={configured ? undefined : 'photo-share-unavailable'}
+            disabled={busy || !token || !configured}
+            onClick={() => void update('create')}
+          >
             Autorizar compartilhamento e gerar QR Code
           </Button>
         </>

@@ -1,6 +1,6 @@
 # Molduras oficiais
 
-Esta pasta contém as artes oficiais Redes Neurais da Feira das Profissões, com canal alfa na abertura central.
+Esta pasta contém as artes oficiais da Feira das Profissões 2026 para o Curso Técnico de Inteligência Artificial, com canal alfa na abertura central.
 
 - `feira-das-profissoes.png` tem 1920 × 1080 pixels (16:9).
 - `feira-das-profissoes-4x3.png` tem 640 × 480 pixels (4:3).

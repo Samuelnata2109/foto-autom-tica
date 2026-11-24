@@ -24,7 +24,7 @@ Na cabine, Tab alcança o grupo Temporizador e as setas alternam entre 5 e 10 se
 Com a câmera pronta, selecione a duração e pressione **Tirar foto**. A contagem pode
 ser cancelada. Na revisão, **Tirar novamente** descarta a foto e volta à transmissão.
 **Confirmar foto** mantém o JPEG em memória até você sair da cabine ou tirar outra foto.
-O espelhamento da prévia não altera a fotografia.
+O espelhamento escolhido no visor também se aplica à fotografia. A moldura oficial mantém a orientação da arte.
 
 Para habilitar o armazenamento temporário da Etapa 08, configure as variáveis públicas do
 Supabase em `.env.local`, prepare as migrations e o Cron e entre em **Acesso da equipe**.

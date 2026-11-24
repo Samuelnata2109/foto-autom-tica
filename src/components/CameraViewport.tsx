@@ -22,14 +22,32 @@ export function FramingGuides() {
   );
 }
 
-export function CameraViewport({ video, overlay }: { video?: ReactNode; overlay?: ReactNode }) {
+export function CameraViewport({
+  video,
+  overlay,
+  frameUrl,
+}: {
+  video?: ReactNode;
+  overlay?: ReactNode;
+  frameUrl?: string;
+}) {
+  const framed = Boolean(video && frameUrl);
   return (
-    <section aria-label="Visor da câmera" className="camera-viewport">
-      <FramingGuides />
-      <div className="camera-viewport__label">
-        <ScanLine size={17} aria-hidden="true" /> Visor da câmera
-      </div>
-      {video && <div className="camera-viewport__media">{video}</div>}
+    <section aria-label="Visor da câmera" className="camera-viewport" data-framed={framed}>
+      {!framed && (
+        <>
+          <FramingGuides />
+          <div className="camera-viewport__label">
+            <ScanLine size={17} aria-hidden="true" /> Visor da câmera
+          </div>
+        </>
+      )}
+      {video && (
+        <div className="camera-viewport__media">
+          {video}
+          {frameUrl && <img className="camera-viewport__frame" src={frameUrl} alt="" />}
+        </div>
+      )}
       {overlay}
     </section>
   );

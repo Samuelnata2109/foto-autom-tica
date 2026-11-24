@@ -20,11 +20,20 @@ function ratioOf(width: number, height: number): FrameRatio | null {
   return null;
 }
 
+function officialFrameUrl(ratio: FrameRatio) {
+  return frames[framePaths[ratio]];
+}
+
+export function selectOfficialFrame(width: number, height: number) {
+  const ratio = ratioOf(width, height);
+  return ratio ? officialFrameUrl(ratio) : undefined;
+}
+
 export async function loadOfficialFrame(
   width: number,
   height: number,
   signal?: AbortSignal,
-  resolveFrameUrl: (ratio: FrameRatio) => string | undefined = (ratio) => frames[framePaths[ratio]],
+  resolveFrameUrl: (ratio: FrameRatio) => string | undefined = officialFrameUrl,
 ): Promise<{ frame: 'applied'; bitmap: ImageBitmap } | { frame: 'missing' | 'unsupported' }> {
   const ratio = ratioOf(width, height);
   if (!ratio) return { frame: 'unsupported' };

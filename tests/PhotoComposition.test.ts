@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { composePhoto } from '../src/services/photoComposition';
+import { composePhoto, selectOfficialFrame } from '../src/services/photoComposition';
 
 const png = new Blob(['frame'], { type: 'image/png' });
 const originalBlob = new Blob(['original'], { type: 'image/jpeg' });
@@ -56,8 +56,10 @@ it.each([
     const result = await composePhoto(original, signal);
     expect(result).toEqual({ frame: 'applied', photo: { blob: jpeg, width, height } });
     expect(original).toEqual({ blob: originalBlob, width, height });
+    const previewUrl = selectOfficialFrame(width, height);
+    expect(previewUrl).toEqual(expect.stringContaining('/' + file));
     expect(fetch).toHaveBeenCalledExactlyOnceWith(
-      expect.stringContaining('/' + file),
+      previewUrl,
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(createImageBitmap).toHaveBeenNthCalledWith(2, originalBlob);

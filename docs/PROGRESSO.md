@@ -295,7 +295,7 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Escopo** `#/equipe` abre diretamente a gestão de Stories oficiais. Removidas da interface as seções informativas de visão geral, eventos e auditoria e a navegação entre seções. A rota legada `#/equipe/stories` redireciona para `#/equipe` dentro do guardião de autenticação.
 - **Segurança preservada** autenticação do operador, validação pela Edge Function, sessão em memória, expiração, cancelamento de requisições e revogação de URLs temporárias permanecem no layout administrativo existente.
 - **Arquivos** `src/App.tsx`, `src/pages/AdminPage.tsx`, `src/pages/OfficialStoriesPage.tsx`, `src/pages/admin.css`, `tests/AdminPage.test.tsx`, `docs/ARQUITETURA.md`, `docs/INTEGRACAO_INSTAGRAM.md` e `docs/PROGRESSO.md`.
-- **Validação** pendente de lint, typecheck, testes e build nesta implementação.
+- **Validação** lint, typecheck, build e 185 testes em 16 arquivos passaram. O PR #26 foi integrado a `develop` em `7303a3f`. O fluxo principal da fila foi validado em produção após o PR #27, conforme o encerramento abaixo.
 
 ### Moldura da Feira das Profissões 2026 no visor — 23/11/2026
 
@@ -303,7 +303,7 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Implementação** `CameraViewport`, `BoothPage`, estilos da cabine, serviços de captura e composição e `usePhotoCapture`. Visor e composição selecionam o mesmo PNG pela proporção nativa. O JPEG mantém a orientação espelhada escolhida no visor e recebe a arte uma única vez.
 - **Validação visual** Chrome com vídeo sintético nas duas proporções e larguras de 390 e 1280 px. O retângulo da moldura coincidiu com o do vídeo, e as capturas conferidas preservaram resolução e orientação.
 - **Validação automatizada** lint, typecheck e build do GitHub Pages passaram. O Vitest passou com 189 testes em 16 arquivos. Nenhuma dependência adicionada.
-- **Continuidade** branch `feature/camera-frame-preview`, para revisão em `develop`. Validar com a câmera ou DroidCam do evento e com gestos reais antes da integração.
+- **Continuidade** branch `feature/camera-frame-preview`, integrada a `develop` pelo PR #27. A nova moldura no visor e na foto foi validada com câmera em produção. A matriz de equipamentos e gestos fica na validação operacional da Etapa 12.
 
 - **Revisão da arte neon** os anexos mais recentes substituem as duas artes no PR #27. O PNG 16:9 foi ajustado de 1672 × 941 para 1920 × 1080 e o 4:3 de 1448 × 1086 para 640 × 480, com escala proporcional. Foram removidos resíduos de baixa opacidade. A verificação de alfa no interior e a inspeção visual sobre fundo quadriculado confirmaram a abertura limpa nas regiões examinadas.
 - **Validação da revisão neon** lint, typecheck, build do GitHub Pages e 189 testes em 16 arquivos passaram. Os dois PNGs do build conferem por hash com os arquivos revisados.
@@ -314,4 +314,12 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Correção** após o upload confirmado, `PhotoStorageConsent` mostra `PhotoShareControls`. Com URL pública válida, o botão pede consentimento separado para gerar o QR. Sem URL válida, o botão fica desabilitado com uma explicação e nenhuma solicitação de compartilhamento é enviada.
 - **Cobertura** `tests/PhotoStorageConsent.test.tsx` verifica o fluxo com URL HTTPS, URL ausente e URL local inválida, incluindo geração, cópia e revogação com backend simulado. Nenhuma dependência adicionada.
 - **Validação** lint, typecheck, 191 testes em 16 arquivos e build do GitHub Pages passaram. Os testes da interface não enviaram fotografias ao Supabase de produção.
-- **Continuidade** validar com foto sintética, operador e URL pública no mesmo projeto de homologação, incluindo leitura em outro dispositivo e envio para a fila de Stories. Branch `feature/camera-frame-preview`, no PR #27 para `develop`.
+- **Continuidade** leitura em outro dispositivo, recuperação da foto e envio à fila de Stories confirmados em produção no encerramento abaixo. O roteiro de homologação continua disponível no guia de QR para futuras regressões.
+
+### Encerramento do PR #27 — validação em produção
+
+- **Entrega concluída** [PR #27](https://github.com/Samuelnata2109/foto-autom-tica/pull/27) integrado a `develop` em `a5b9f138e8f115aedb25b1000951cda1a577eb7b`. Os jobs de build e deploy passaram no [workflow 45305396812](https://github.com/Samuelnata2109/foto-autom-tica/actions/runs/45305396812). A conferência final registrou 191 testes automatizados aprovados em 16 arquivos, além de lint, typecheck e builds aprovados.
+- **Validação funcional informada pelo desenvolvedor** nova moldura no visor e na foto final, captura com câmera, confirmação e armazenamento da foto, geração e leitura do QR, recuperação e download pelo celular. O envio chegou à fila de Stories do painel administrativo, onde a solicitação foi aprovada, baixada e marcada como publicada.
+- **Ambientes** [GitHub Pages de produção](https://samuelnata2109.github.io/foto-autom-tica/) e Supabase de produção atendem o fluxo publicado sem depender do Cloudflare Tunnel. O túnel de homologação desligado limitava a recuperação externa naquele ambiente. A validação posterior em produção encerrou a pendência funcional do PR.
+- **Verificações restantes** a validação confirmada não abrange a matriz completa de dispositivos, testes prolongados, desempenho dos gestos e cenários virtuais, nem a verificação operacional do Cron e da remoção física após expiração. Expiração, revogação, exclusão e falhas devem continuar no roteiro de regressão. Nenhum bloqueio foi relatado para o fluxo validado.
+- **Próxima etapa** [Etapa 12 — Testes, otimização e implantação](ROADMAP.md#etapa-12--testes-otimização-e-implantação), prevista no planejamento original e ainda não iniciada.

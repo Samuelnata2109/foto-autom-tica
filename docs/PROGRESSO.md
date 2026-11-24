@@ -322,4 +322,41 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Validação funcional informada pelo desenvolvedor** nova moldura no visor e na foto final, captura com câmera, confirmação e armazenamento da foto, geração e leitura do QR, recuperação e download pelo celular. O envio chegou à fila de Stories do painel administrativo, onde a solicitação foi aprovada, baixada e marcada como publicada.
 - **Ambientes** [GitHub Pages de produção](https://samuelnata2109.github.io/foto-autom-tica/) e Supabase de produção atendem o fluxo publicado sem depender do Cloudflare Tunnel. O túnel de homologação desligado limitava a recuperação externa naquele ambiente. A validação posterior em produção encerrou a pendência funcional do PR.
 - **Verificações restantes** a validação confirmada não abrange a matriz completa de dispositivos, testes prolongados, desempenho dos gestos e cenários virtuais, nem a verificação operacional do Cron e da remoção física após expiração. Expiração, revogação, exclusão e falhas devem continuar no roteiro de regressão. Nenhum bloqueio foi relatado para o fluxo validado.
-- **Próxima etapa** [Etapa 12 — Testes, otimização e implantação](ROADMAP.md#etapa-12--testes-otimização-e-implantação), prevista no planejamento original e ainda não iniciada.
+- **Próxima etapa** [Etapa 12 — Testes, otimização e implantação](ROADMAP.md#etapa-12--testes-otimização-e-implantação), conforme o planejamento original.
+
+## Etapa 12/12 — Preparação e diagnóstico inicial
+
+- **Base e publicação** [PR #28](https://github.com/Samuelnata2109/foto-autom-tica/pull/28) integrado em `24c95ba4bdeb7a4904022b777909b477e995820b`. O [workflow automático 45307777964](https://github.com/Samuelnata2109/foto-autom-tica/actions/runs/45307777964) concluiu com sucesso para esse commit.
+- **Branch e escopo** `feature/12-testing-optimization-deployment` criada a partir de `develop` atualizado. Esta entrega registra diagnóstico e planejamento, com mudanças apenas em Markdown. A alteração local de `vite.config.ts` foi preservada.
+- **Diagnóstico** o modo de desenvolvimento local aponta para o Supabase de produção. Homologação usa projeto separado e a configuração local do túnel tem aspas literais na lista de hosts. A matriz de equipamentos, desempenho, estabilidade e retenção real precisa de evidência consolidada. O workflow de publicação verifica build e artefatos, sem executar a suíte de regressão.
+- **Verificações** inventário do código, testes e configuração, revisão do diff e auditoria npm sem avisos reportados. Os 191 testes em 16 arquivos são evidência do PR #27 e não foram reexecutados nesta entrega documental.
+- **Documentos** [planejamento e diagnóstico](ETAPA_12_PLANEJAMENTO.md), [matriz](MATRIZ_DE_TESTES.md), [critérios de aceitação](CRITERIOS_DE_ACEITACAO.md), [checklist operacional](CHECKLIST_OPERACIONAL.md) e [roadmap](ROADMAP.md).
+- **Próxima ação proposta** confirmar o isolamento antes de ensaios com escrita e registrar a configuração de referência. As correções, os testes físicos e a homologação final aguardam autorização.
+
+### 12.1 — Isolamento dos ambientes
+
+- **Causa** `.env.local` fornecia o destino de produção ao modo padrão, e o cliente aceitava a origem mesmo quando a URL vinha com caminho. O QR ausente não impedia Auth nem armazenamento.
+- **Proteção** `vite.config.ts` valida a origem e a chave publicável por modo, e `supabaseAuth.ts` só cria o cliente quando a política compartilhada permite. O build do Pages exige o projeto de produção e a URL oficial do QR. Uma prévia local desse build não habilita o backend de produção. Nenhuma dependência adicionada.
+- **Validação** lint, typecheck, 205 testes em 17 arquivos, build padrão com variáveis de homologação, build do Pages com variáveis públicas do workflow e `git diff --check` passaram. O carregamento real da configuração do Vite rejeitou o destino padrão atual e aceitou homologação. Nenhum upload foi executado.
+- **Pendências** configurar o modo padrão com valores de teste antes de iniciar a cabine, confirmar o fluxo com dados sintéticos e revisar o hostname do túnel e a base de QR duplicada em homologação. O trecho local de `allowedHosts` foi preservado. A subetapa 12.1 segue em andamento.
+
+### 23/11/2026 — Simplificação da Etapa 12
+
+- **Plano vigente** três subetapas na branch `feature/12-testing-optimization-deployment`. A 12.1 finaliza segurança e ajustes locais. A 12.2 simula de 30 a 60 minutos de atendimento no equipamento da feira. A 12.3 concentra testes finais, PR para `develop` e conferência de produção após merge e deploy autorizados.
+- **Evidências reaproveitadas** diagnóstico de `acc2feb`, isolamento de `bd2c8bb` com 205 testes em 17 arquivos, verificações de RLS, privilégios, autenticação e bucket privado, e validação do PR #27 em produção para moldura, armazenamento, QR, download e Stories. Esta revisão documental não reexecutou a suíte.
+- **Documentos atualizados** [planejamento](ETAPA_12_PLANEJAMENTO.md), [matriz](MATRIZ_DE_TESTES.md), [critérios](CRITERIOS_DE_ACEITACAO.md), [checklist](CHECKLIST_OPERACIONAL.md), [roadmap](ROADMAP.md) e este registro.
+- **Status e próxima ação** 12.1 em andamento, 12.2 e 12.3 pendentes. Após autorização, conferir a configuração local e resolver, se necessário, a duplicidade da URL do QR e o host antes de testar armazenamento sintético em homologação. A execução do Cron e a remoção física continuam pendentes de evidência.
+
+#### 23/11/2026 — Ajustes locais de segurança e prontidão de homologação
+
+- **Configuração local** `.env.local` e `.env.homologacao.local` apontam para o projeto de homologação. A entrada vazia duplicada da URL do QR foi removida. A URL efetiva do túnel ficou no arquivo ignorado pelo Git. A regra local com aspas literais foi removida de `vite.config.ts`. Quando o túnel voltar a ser necessário, use `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` no processo do Vite com o hostname exato, sem fixá-lo no código.
+- **Verificação** o Vite aceitou o projeto de teste nos dois modos e bloqueou uma sobrescrita para produção. No teste local de hosts, localhost e o host exato configurado retornaram HTTP 200 e o host arbitrário, 403. Em homologação, o endpoint de configuração do Auth retornou 200 e o preflight de `booth-photos` para `http://localhost:5173` retornou 204 com os cabeçalhos de upload previstos.
+- **Pendências** entrar na cabine com operador de homologação, armazenar uma foto sintética e verificar a execução do Cron e a remoção física do objeto após a expiração, seguindo o [guia de armazenamento privado](ARMAZENAMENTO_PRIVADO.md#inspeção-monitoramento-e-recuperação). A 12.1 segue em andamento.
+
+#### 24/11/2026 — Preparação antecipada da entrega final
+
+- **Escopo** preparação do PR em rascunho para `develop` na branch `feature/12-testing-optimization-deployment`. A preparação pode avançar enquanto o computador definitivo da feira estiver indisponível.
+- **Validação do candidato** lint, typecheck, 205 testes em 17 arquivos, build do GitHub Pages com as variáveis públicas do workflow e `git diff --check` aprovados.
+- **12.1** pendente a confirmação de que a limpeza agendada removeu fisicamente a fotografia expirada em homologação.
+- **12.2B** pendente o ensaio de 30 a 60 minutos no computador definitivo da feira, conforme a [matriz de testes](MATRIZ_DE_TESTES.md).
+- **12.3** pendentes a aprovação, o merge, o deploy e a conferência final em produção.

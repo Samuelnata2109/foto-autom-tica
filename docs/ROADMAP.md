@@ -17,12 +17,12 @@ O estado de cada entrega implementada é registrado em [PROGRESSO.md](PROGRESSO.
 
 ## Etapa 12 — Testes, otimização e implantação
 
-Próxima etapa prevista após o encerramento funcional do PR #27. O objetivo é consolidar a qualidade e a operação da cabine para o evento, usando o ambiente já publicado como referência. Os critérios abaixo detalham os [requisitos não funcionais](REQUISITOS.md#não-funcionais) existentes. A etapa ainda não foi iniciada.
+O objetivo é preparar a cabine para a Feira das Profissões 2026, aproveitando as validações anteriores de produção e de isolamento.
 
-| Requisito | Critério de aceitação proposto |
+| Subetapa | Foco |
 | --- | --- |
-| Regressão funcional e compatibilidade | Registrar uma matriz representativa de câmeras, navegadores e tamanhos de tela. Validar captura manual e por gestos, temporizador e cancelamento, molduras, cenários, armazenamento, QR e ações da fila de Stories. |
-| Acessibilidade e recuperação | Conferir foco, teclado, contraste e movimento reduzido. Demonstrar retomada após recusa de permissão, perda da câmera ou queda de rede, sem captura nem envio duplicado. |
-| Desempenho e estabilidade | Medir taxa de quadros, latência, memória e falsos acionamentos no equipamento de referência. Definir metas a partir das primeiras medições e demonstrar que foram atendidas em sessões repetidas e prolongadas. |
-| Segurança, privacidade e retenção | Verificar acesso por operador autorizado, consentimentos, revogação, expiração e exclusão com dados sintéticos. Confirmar a execução do Cron e a remoção de objetos vencidos, revisar os avisos de privacidade e conferir que o artefato e os logs não expõem credenciais ou dados privados. |
-| Publicação reproduzível | Reproduzir a instalação com `npm ci` e aprovar lint, typecheck, testes e build. Em uma publicação autorizada, conferir o commit e o artefato do Pages, validar os fluxos principais publicados e documentar como recuperar ou reverter uma versão. |
+| 12.1 — Segurança e ajustes finais | Finalizar a configuração local, testar armazenamento sintético em homologação e comprovar a limpeza agendada e a remoção física. |
+| 12.2 — Simulação do evento | Ensaiar de 30 a 60 minutos no equipamento da feira e corrigir problemas relevantes observados. |
+| 12.3 — Entrega final | Executar as verificações finais, revisar o PR para `develop` e, após autorização e publicação, conferir produção e registrar a conclusão. |
+
+[Planejamento e diagnóstico](ETAPA_12_PLANEJAMENTO.md) · [Matriz de testes](MATRIZ_DE_TESTES.md) · [Critérios de aceitação](CRITERIOS_DE_ACEITACAO.md) · [Checklist operacional](CHECKLIST_OPERACIONAL.md)

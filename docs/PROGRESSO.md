@@ -304,3 +304,6 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 - **Validação visual** Chrome com vídeo sintético nas duas proporções e larguras de 390 e 1280 px. O retângulo da moldura coincidiu com o do vídeo, e as capturas conferidas preservaram resolução e orientação.
 - **Validação automatizada** lint, typecheck e build do GitHub Pages passaram. O Vitest passou com 189 testes em 16 arquivos. Nenhuma dependência adicionada.
 - **Continuidade** branch `feature/camera-frame-preview`, para revisão em `develop`. Validar com a câmera ou DroidCam do evento e com gestos reais antes da integração.
+
+- **Revisão da arte neon** os anexos mais recentes substituem as duas artes no PR #27. O PNG 16:9 foi ajustado de 1672 × 941 para 1920 × 1080 e o 4:3 de 1448 × 1086 para 640 × 480, com escala proporcional. Foram removidos resíduos de baixa opacidade. A verificação de alfa no interior e a inspeção visual sobre fundo quadriculado confirmaram a abertura limpa nas regiões examinadas.
+- **Validação da revisão neon** lint, typecheck, build do GitHub Pages e 189 testes em 16 arquivos passaram. Os dois PNGs do build conferem por hash com os arquivos revisados.

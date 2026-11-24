@@ -1,6 +1,6 @@
 # Composição fotográfica — Etapa 06
 
-A cabine usa os dois PNGs oficiais da Feira das Profissões 2026, com a identificação do Curso Técnico de Inteligência Artificial. Os arquivos fornecidos têm canal alfa na abertura central e foram incluídos sem reexportação.
+A cabine usa os dois PNGs neon oficiais da Feira das Profissões 2026, com a identificação do Curso Técnico de Inteligência Artificial. As artes fornecidas foram redimensionadas proporcionalmente e limpas de resíduos de baixa opacidade. A abertura central tem canal alfa transparente.
 
 | Proporção da captura | Arte em `src/assets/frames/`   | Dimensões da arte |
 | -------------------- | ------------------------------ | ----------------- |

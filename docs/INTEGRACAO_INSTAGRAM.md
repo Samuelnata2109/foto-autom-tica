@@ -27,6 +27,8 @@ Antes do evento, a organização deve definir o procedimento de autorização e 
 3. Na solicitação aprovada, baixe o JPEG 9:16. No aparelho da equipe, selecione manualmente o perfil oficial e publique um Story com esse arquivo.
 4. Na fila, escolha **Marcar como publicada** e confirme **Sim, já foi publicada** após concluir a publicação no Instagram. O servidor exige aprovação prévia. A marcação registra a ação declarada pelo operador.
 
+Após a publicação do PR #27, o desenvolvedor confirmou em produção o envio pelo visitante, o recebimento no painel, a aprovação, o download e a marcação como publicada. O registro está no [encerramento do PR #27](PROGRESSO.md#encerramento-do-pr-27--validação-em-produção).
+
 Rejeitada e publicada são decisões terminais. Fotos expiradas, excluídas ou com o QR revogado ficam indisponíveis para leitura e transições. O registro de uma publicação anterior continua visível enquanto seu metadado estiver presente. A aplicação não consegue retirar um JPEG já baixado ou um Story publicado. A equipe deve cuidar do arquivo local e, se necessário, remover o Story no aplicativo oficial.
 
 ## Backend e retenção

@@ -307,3 +307,11 @@ Lint, tipagem, formatação, build e os 55 testes passaram. O worker do build se
 
 - **Revisão da arte neon** os anexos mais recentes substituem as duas artes no PR #27. O PNG 16:9 foi ajustado de 1672 × 941 para 1920 × 1080 e o 4:3 de 1448 × 1086 para 640 × 480, com escala proporcional. Foram removidos resíduos de baixa opacidade. A verificação de alfa no interior e a inspeção visual sobre fundo quadriculado confirmaram a abertura limpa nas regiões examinadas.
 - **Validação da revisão neon** lint, typecheck, build do GitHub Pages e 189 testes em 16 arquivos passaram. Os dois PNGs do build conferem por hash com os arquivos revisados.
+
+### Disponibilidade do QR após armazenar a foto — 23/11/2026
+
+- **Diagnóstico** o modo padrão `development` tinha acesso ao armazenamento, mas sem `VITE_PHOTO_SHARE_BASE_URL`. A mesma condição em `develop` e no PR #27 removia o painel de compartilhamento inteiro.
+- **Correção** após o upload confirmado, `PhotoStorageConsent` mostra `PhotoShareControls`. Com URL pública válida, o botão pede consentimento separado para gerar o QR. Sem URL válida, o botão fica desabilitado com uma explicação e nenhuma solicitação de compartilhamento é enviada.
+- **Cobertura** `tests/PhotoStorageConsent.test.tsx` verifica o fluxo com URL HTTPS, URL ausente e URL local inválida, incluindo geração, cópia e revogação com backend simulado. Nenhuma dependência adicionada.
+- **Validação** lint, typecheck, 191 testes em 16 arquivos e build do GitHub Pages passaram. Os testes da interface não enviaram fotografias ao Supabase de produção.
+- **Continuidade** validar com foto sintética, operador e URL pública no mesmo projeto de homologação, incluindo leitura em outro dispositivo e envio para a fila de Stories. Branch `feature/camera-frame-preview`, no PR #27 para `develop`.

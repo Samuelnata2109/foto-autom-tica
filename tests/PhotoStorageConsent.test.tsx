@@ -5,17 +5,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PhotoStorageConsent } from '../src/components/PhotoStorageConsent';
 import * as storage from '../src/services/privatePhotoStorage';
 
-vi.mock('../src/services/photoShareLink', () => ({
-  sharingConfigured: true,
-  photoShareLink: (secret: string) => `https://cabine.example.test/#/foto/${secret}`,
-}));
-
 const original = { blob: new Blob(['photo'], { type: 'image/jpeg' }), width: 640, height: 480 };
 const photo = { ...original, original, url: 'blob:approved', frame: 'applied' } as const;
 let host: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+  vi.stubEnv('VITE_PHOTO_SHARE_BASE_URL', 'https://cabine.example.test/foto-autom-tica/');
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   host = document.createElement('div');
   root = createRoot(host);
@@ -26,6 +22,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -55,6 +52,8 @@ it('gera QR apenas após consentimento separado e permite revogação', async ()
   await open();
   expect(host.textContent).not.toContain('Autorizar compartilhamento');
   await click('Autorizar e armazenar');
+  expect(host.textContent).toContain('Foto armazenada');
+  expect(host.querySelector<HTMLButtonElement>('.photo-share button')?.disabled).toBe(false);
   expect(create).not.toHaveBeenCalled();
   expect(host.querySelector('svg title')).toBeNull();
   await click('Autorizar compartilhamento e gerar QR Code');
@@ -65,11 +64,35 @@ it('gera QR apenas após consentimento separado e permite revogação', async ()
     expect.any(AbortSignal),
   );
   expect(host.querySelector('svg title')?.textContent).toBe('QR Code da fotografia');
+  await click('Copiar link');
+  expect(host.querySelector<HTMLInputElement>('.photo-share input')?.value).toBe(
+    `https://cabine.example.test/foto-autom-tica/#/foto/${create.mock.calls[0]?.[2]}`,
+  );
   await click('Revogar link');
   expect(revoke).toHaveBeenCalledOnce();
   expect(host.textContent).toContain('Compartilhamento revogado');
   expect(host.querySelector('svg title')).toBeNull();
 });
+
+it.each(['', 'http://localhost:5173/'])(
+  'explica por que o QR está indisponível após armazenar com URL %j',
+  async (base) => {
+    vi.stubEnv('VITE_PHOTO_SHARE_BASE_URL', base);
+    const create = vi
+      .spyOn(storage, 'shareStoredPhoto')
+      .mockResolvedValue(new Date(Date.now() + 60_000).toISOString());
+    await open();
+    expect(host.querySelector('.photo-share')).toBeNull();
+    await click('Autorizar e armazenar');
+    expect(host.textContent).toContain('Foto armazenada');
+    expect(host.querySelector('.photo-share [role="status"]')?.textContent).toContain(
+      'falta configurar um endereço público',
+    );
+    expect(host.querySelector<HTMLButtonElement>('.photo-share button')?.disabled).toBe(true);
+    await click('Autorizar compartilhamento e gerar QR Code');
+    expect(create).not.toHaveBeenCalled();
+  },
+);
 
 it('exige login da equipe e decisão explícita para enviar e excluir', async () => {
   await open(null);

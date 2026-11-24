@@ -27,4 +27,6 @@ export function photoShareLink(secret: string, base = import.meta.env.VITE_PHOTO
   return url.href;
 }
 
-export const sharingConfigured = Boolean(publicBase(import.meta.env.VITE_PHOTO_SHARE_BASE_URL));
+export function isPhotoSharingConfigured() {
+  return Boolean(publicBase(import.meta.env.VITE_PHOTO_SHARE_BASE_URL));
+}

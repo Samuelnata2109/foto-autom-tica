@@ -11,6 +11,8 @@ Para o endereço oficial do AI Photo Booth, use a [publicação pelo GitHub Page
 3. Em homologação, confira `supabase db push --dry-run`, aplique a migration `20261121000100_booth_photo_sharing.sql` com `supabase db push` e republique `supabase functions deploy booth-photos --no-verify-jwt`. A função verifica o JWT e a sessão para as ações da equipe e o token de compartilhamento nas leituras do visitante. [Autorização em Edge Functions](https://supabase.com/docs/guides/functions/auth)
 4. Publique o frontend e teste em outro dispositivo. A cabine local pode emitir links para o endereço público configurado. A página pública usa `HashRouter` a partir do documento raiz da implantação. [Configuração do armazenamento privado](ARMAZENAMENTO_PRIVADO.md)
 
+O armazenamento privado funciona mesmo sem uma URL de compartilhamento. Se a foto estiver armazenada e o botão de QR estiver desabilitado com o aviso sobre endereço público, confira o modo do Vite e a variável `VITE_PHOTO_SHARE_BASE_URL`. Para validar com dados sintéticos, inicie a cabine com `npm run dev -- --mode homologacao` e configure em `.env.homologacao.local` uma única URL HTTPS pública ativa que entregue o frontend conectado ao mesmo projeto Supabase da cabine. Reinicie o Vite após editar a configuração. Um endereço `localhost` não serve como destino do QR em outro dispositivo.
+
 ## Segurança e operação
 
 - O navegador gera um token de 256 bits com `crypto.getRandomValues`. O token fica no fragmento do QR, que o navegador não inclui na requisição ao servidor do frontend. A página envia o token em um corpo POST de 64 bytes por HTTPS. O banco armazena somente o SHA-256. As respostas usam `private, no-store` e `no-referrer`. Mantenha o fluxo fora de ferramentas de análise e de gravação de sessões.

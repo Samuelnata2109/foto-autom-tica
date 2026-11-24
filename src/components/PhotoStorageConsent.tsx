@@ -10,7 +10,6 @@ import {
 import { Button } from './Button';
 import { OperatorLogin } from './OperatorLogin';
 import { PhotoShareControls } from './PhotoShareControls';
-import { sharingConfigured } from '../services/photoShareLink';
 
 export function StorageOperator({
   token,
@@ -124,8 +123,7 @@ export function PhotoStorageConsent({
       )}
       {stage === 'removed' && <p role="status">A cópia armazenada foi excluída.</p>}
       {error && <p role="alert">{error}</p>}
-      {sharingConfigured &&
-        storedAccess &&
+      {storedAccess &&
         onNewSession &&
         ['stored', 'removing', 'removeError'].includes(stage) && (
           <div hidden={stage === 'removing'}>

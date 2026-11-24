@@ -1,0 +1,18 @@
+# Critérios de aceitação — Etapa 12
+
+A liberação depende de evidência para os critérios abaixo e da aprovação do responsável pelo evento. As verificações têm estado inicial **pendente** para a configuração final do evento.
+
+| Critério | Condição de aceite | Evidência exigida |
+| --- | --- | --- |
+| CA01 — Diagnóstico e isolamento | Configuração efetiva, destinos de rede e permissões de cada ambiente revisados. Ensaios com escrita limitados a ambiente isolado. Avisos de dependências avaliados e riscos P0/P1 resolvidos ou, para P1 não bloqueante, aceitos formalmente com mitigação. | Inventário redigido, auditoria datada, evidência de destino e lista de riscos com responsável. |
+| CA02 — Fluxos principais | C01–C05, Q01 e T01–T02 aprovados onde aplicáveis no equipamento principal e na alternativa operacional. QR recupera o JPEG em celular de rede separada. | Matriz preenchida, commit e configuração, dimensões do JPEG e resultados do operador. |
+| CA03 — Metas de desempenho | Linha de base medida no equipamento do evento. Metas acordadas após a primeira rodada e atingidas na comparação. Nenhuma alteração entra apenas por hipótese de ganho. | Registro de dispositivo e condições, medianas e percentis quando aplicáveis, métricas antes/depois e tamanhos do artefato. |
+| CA04 — Estabilidade | Sessão prolongada e falhas S01–S03 executadas. Sem operações duplicadas ou recursos ativos após o encerramento e sem tendência crescente de retenção de memória em condições equivalentes. | Contagem de sessões e falhas, tempos de retomada, traces e amostras antes/durante/depois. |
+| CA05 — Acessibilidade e uso | Fluxos centrais acessíveis por teclado, foco visível, legibilidade e feedback confirmados no monitor e no celular. Movimento reduzido considerado. Operador e visitante iniciante completam o roteiro representativo. | Roteiro A01, verificações de contraste e relatório de observação com dados sintéticos. |
+| CA06 — Segurança e descarte | Autorizações e consentimentos separados confirmados. QR vencido, revogado ou associado a foto excluída é recusado. Bucket, RLS, grants, limites, logs e Cron verificados. Retenção e remoção física demonstradas em ambiente autorizado. | Resultados de SQL local/testes negativos e evidência operacional agregada, sem segredos, links completos ou fotos reais. |
+| CA07 — Prontidão da operação | Operadores aplicam o checklist com troca de câmera, perda de rede e encerramento. Há um responsável pela liberação e outro ponto de contato para falhas. | Checklist do ensaio, responsáveis, contingências e tempo de retomada. |
+| CA08 — Entrega e reversão | `npm ci`, lint, typecheck, testes, builds padrão e Pages aprovados. Artefato sem endpoints de homologação e sem segredos. Reversão ensaiada em ambiente seguro. Quando autorizada a publicação, SHA, workflow, assets servidos e smoke tests conferidos. | Logs, SHA integrado e publicado, URL da execução, inventário de artefatos e roteiro de rollback. |
+
+P0 inclui acesso indevido a fotos ou credenciais, escrita de teste em produção e perda ou duplicação grave de operações. P0 em aberto bloqueia a liberação. Falhas P1 em fluxo obrigatório, retenção, recuperação ou operacionalização também bloqueiam. Uma combinação opcional indisponível deve ter alternativa documentada e aprovada. Nenhum teste obrigatório fica implicitamente aprovado por ausência de evidência.
+
+A reunião de liberação registra o commit, a configuração, os perfis aprovados, as exceções aceitas, quem autorizou e como acionar o rollback. A validação anterior do PR #27 permanece válida como referência e não substitui a conferência final da Etapa 12.

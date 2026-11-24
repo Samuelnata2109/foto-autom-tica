@@ -17,7 +17,9 @@ O estado de cada entrega implementada é registrado em [PROGRESSO.md](PROGRESSO.
 
 ## Etapa 12 — Testes, otimização e implantação
 
-Próxima etapa prevista após o encerramento funcional do PR #27. O objetivo é consolidar a qualidade e a operação da cabine para o evento, usando o ambiente já publicado como referência. Os critérios abaixo detalham os [requisitos não funcionais](REQUISITOS.md#não-funcionais) existentes. A etapa ainda não foi iniciada.
+O objetivo é consolidar a qualidade e a operação da cabine para o evento, usando o ambiente já publicado como referência. O diagnóstico inicial e o plano das subetapas 12.1–12.8 estão registrados. A execução dos ensaios e das intervenções aguarda autorização. Os critérios abaixo detalham os [requisitos não funcionais](REQUISITOS.md#não-funcionais) existentes.
+
+[Planejamento e diagnóstico](ETAPA_12_PLANEJAMENTO.md) · [Matriz de testes](MATRIZ_DE_TESTES.md) · [Critérios de aceitação](CRITERIOS_DE_ACEITACAO.md) · [Checklist operacional](CHECKLIST_OPERACIONAL.md)
 
 | Requisito | Critério de aceitação proposto |
 | --- | --- |
